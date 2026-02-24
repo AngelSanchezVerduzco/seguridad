@@ -22,8 +22,11 @@
               }
             ],
             "styles": [
+              "node_modules/primeicons/primeicons.css",
               "src/styles.css"
             ]
+
+            
           },
           "configurations": {
             "production": {
@@ -81,5 +84,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": "c82a4b8e-bf90-4229-8c12-b57cbf3a79e4"
   }
 }
