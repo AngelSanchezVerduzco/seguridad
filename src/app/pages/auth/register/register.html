@@ -1,3 +1,5 @@
+<p-toast />
+
 <style>
   .page-register {
     min-height: 100vh;
@@ -11,7 +13,7 @@
 
   .register-card {
     width: 100%;
-    max-width: 430px;
+    max-width: 440px;
     background: #ffffff;
     border-radius: 18px;
     box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
@@ -26,7 +28,7 @@
   }
 
   .register-subtitle {
-    margin: 0 0 1.6rem;
+    margin: 0 0 1.25rem;
     font-size: 0.9rem;
     color: #64748b;
   }
@@ -43,23 +45,14 @@
     margin-bottom: 0.35rem;
   }
 
-  .register-input {
+  .register-input,
+  .register-input input {
     width: 100%;
-    border-radius: 999px;
-    border: 1px solid #e2e8f0;
-    padding: 0.55rem 0.9rem;
-    font-size: 0.9rem;
-    outline: none;
-    transition: border-color 0.12s ease, box-shadow 0.12s ease;
-  }
-
-  .register-input:focus {
-    border-color: #ec4899;
-    box-shadow: 0 0 0 1px rgba(236, 72, 153, 0.35);
+    box-sizing: border-box;
   }
 
   .register-footer {
-    margin-top: 1.1rem;
+    margin-top: 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -77,24 +70,14 @@
     text-decoration: underline;
   }
 
-  .register-button {
-    width: 100%;
-    margin-top: 0.4rem;
-    border-radius: 999px;
-    border: none;
-    padding: 0.65rem 1rem;
-    background: linear-gradient(135deg, #ec4899, #8b5cf6);
-    color: #ffffff;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 12px 30px rgba(147, 51, 234, 0.35);
-    transition: transform 0.12s ease, box-shadow 0.12s ease;
+  .register-msg {
+    margin-top: 0.35rem;
   }
 
-  .register-button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 16px 34px rgba(147, 51, 234, 0.45);
+  .hint {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 0.25rem;
   }
 </style>
 
@@ -102,64 +85,169 @@
   <div class="register-card">
     <h1 class="register-title">Crear cuenta</h1>
     <p class="register-subtitle">
-      Página estática de registro. Solo es maqueta; más adelante podrás validar datos y enviarlos a
-      tu backend.
+      Completa todos los campos. Contraseña mínimo 10 caracteres con al menos un símbolo especial.
+      Solo mayores de 18 años.
     </p>
 
-    <form>
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
       <div class="register-field">
-        <label class="register-label" for="register-name">Nombre completo</label>
+        <label class="register-label" for="usuario">Usuario</label>
         <input
-          id="register-name"
+          id="usuario"
           type="text"
-          class="register-input"
           pInputText
-          placeholder="Tu nombre"
+          formControlName="usuario"
+          [invalid]="isInvalid('usuario')"
+          placeholder="Nombre de usuario"
+          class="w-full"
         />
+        @if (isInvalid('usuario')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('usuario') }}
+          </p-message>
+        }
       </div>
 
       <div class="register-field">
-        <label class="register-label" for="register-email">Correo electrónico</label>
+        <label class="register-label" for="email">Correo electrónico</label>
         <input
-          id="register-email"
+          id="email"
           type="email"
-          class="register-input"
           pInputText
+          formControlName="email"
+          [invalid]="isInvalid('email')"
           placeholder="tu@correo.com"
+          class="w-full"
         />
+        @if (isInvalid('email')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('email') }}
+          </p-message>
+        }
       </div>
 
       <div class="register-field">
-        <label class="register-label" for="register-password">Contraseña</label>
-        <input
-          id="register-password"
-          type="password"
-          class="register-input"
-          pInputText
-          placeholder="••••••••"
+        <label class="register-label" for="password">Contraseña</label>
+        <p-password
+          id="password"
+          formControlName="password"
+          [invalid]="isInvalid('password')"
+          placeholder="Mín. 10 caracteres y un símbolo"
+          [toggleMask]="true"
+          [feedback]="true"
+          styleClass="w-full"
+          inputStyleClass="w-full"
         />
+        <p class="hint">Símbolos permitidos: {{ simbolosEspeciales }}</p>
+        @if (isInvalid('password')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('password') }}
+          </p-message>
+        }
       </div>
 
       <div class="register-field">
-        <label class="register-label" for="register-confirm">Confirmar contraseña</label>
-        <input
-          id="register-confirm"
-          type="password"
-          class="register-input"
-          pInputText
+        <label class="register-label" for="confirmPassword">Confirmar contraseña</label>
+        <p-password
+          id="confirmPassword"
+          formControlName="confirmPassword"
+          [invalid]="isInvalid('confirmPassword')"
           placeholder="Repite la contraseña"
+          [toggleMask]="true"
+          [feedback]="false"
+          styleClass="w-full"
+          inputStyleClass="w-full"
         />
+        @if (isInvalid('confirmPassword')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('confirmPassword') }}
+          </p-message>
+        }
+      </div>
+
+      <div class="register-field">
+        <label class="register-label" for="nombreCompleto">Nombre completo</label>
+        <input
+          id="nombreCompleto"
+          type="text"
+          pInputText
+          formControlName="nombreCompleto"
+          [invalid]="isInvalid('nombreCompleto')"
+          placeholder="Tu nombre completo"
+          class="w-full"
+        />
+        @if (isInvalid('nombreCompleto')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('nombreCompleto') }}
+          </p-message>
+        }
+      </div>
+
+      <div class="register-field">
+        <label class="register-label" for="direccion">Dirección</label>
+        <input
+          id="direccion"
+          type="text"
+          pInputText
+          formControlName="direccion"
+          [invalid]="isInvalid('direccion')"
+          placeholder="Calle, número, colonia, CP"
+          class="w-full"
+        />
+        @if (isInvalid('direccion')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('direccion') }}
+          </p-message>
+        }
+      </div>
+
+      <div class="register-field">
+        <label class="register-label" for="fechaNacimiento">Fecha de nacimiento</label>
+        <p-datepicker
+          id="fechaNacimiento"
+          formControlName="fechaNacimiento"
+          [invalid]="isInvalid('fechaNacimiento')"
+          [maxDate]="maxDate"
+          dateFormat="dd/mm/yy"
+          placeholder="Solo mayores de 18 años"
+          [showIcon]="true"
+          styleClass="w-full"
+        />
+        @if (isInvalid('fechaNacimiento')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('fechaNacimiento') }}
+          </p-message>
+        }
+      </div>
+
+      <div class="register-field">
+        <label class="register-label" for="telefono">Teléfono</label>
+        <p-inputnumber
+          id="telefono"
+          formControlName="telefono"
+          [invalid]="isInvalid('telefono')"
+          placeholder="Solo números"
+          [useGrouping]="false"
+          styleClass="w-full"
+          inputStyleClass="w-full"
+        />
+        @if (isInvalid('telefono')) {
+          <p-message severity="error" size="small" variant="simple" class="register-msg">
+            {{ getError('telefono') }}
+          </p-message>
+        }
       </div>
 
       <p-button
-        type="button"
-        label="Registrarme"
-        styleClass="register-button"
-      ></p-button>
+        type="submit"
+        label="Enviar registro"
+        styleClass="w-full"
+        [disabled]="form.invalid"
+      />
 
       <div class="register-footer">
         <span>¿Ya tienes cuenta?</span>
-        <a class="register-link" href="/auth/login">Ir al login</a>
+        <a class="register-link" routerLink="/auth/login">Ir al login</a>
       </div>
     </form>
   </div>
