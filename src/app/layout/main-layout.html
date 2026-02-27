@@ -1,0 +1,11 @@
+<section class="main-layout">
+  <aside class="main-sidebar">
+    <div class="main-logo">Aplicativo Angelito</div>
+    <p-panelMenu [model]="items"></p-panelMenu>
+    <div class="main-version">v{{ appVersion }}</div>
+  </aside>
+
+  <main class="main-content">
+    <router-outlet />
+  </main>
+</section>

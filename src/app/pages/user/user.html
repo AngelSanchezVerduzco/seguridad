@@ -1,0 +1,92 @@
+<style>
+  .user-content {
+    padding: 1.75rem 2rem;
+  }
+
+  .user-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .user-title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .user-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .user-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+    max-width: 480px;
+  }
+
+  .user-field {
+    margin-bottom: 1rem;
+  }
+
+  .user-field:last-child {
+    margin-bottom: 0;
+  }
+
+  .user-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+  }
+
+  .user-value {
+    font-size: 0.95rem;
+    color: #0f172a;
+    padding: 0.5rem 0.75rem;
+    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+  }
+</style>
+
+<header class="user-header">
+  <h1 class="user-title">User</h1>
+  <p class="user-subtitle">Datos del registro</p>
+</header>
+
+<section class="user-card">
+  <div class="user-field">
+    <label class="user-label">Usuario</label>
+    <div class="user-value">{{ usuario }}</div>
+  </div>
+
+  <div class="user-field">
+    <label class="user-label">Correo electrónico</label>
+    <div class="user-value">{{ email }}</div>
+  </div>
+
+  <div class="user-field">
+    <label class="user-label">Nombre completo</label>
+    <div class="user-value">{{ nombreCompleto }}</div>
+  </div>
+
+  <div class="user-field">
+    <label class="user-label">Dirección</label>
+    <div class="user-value">{{ direccion }}</div>
+  </div>
+
+  <div class="user-field">
+    <label class="user-label">Fecha de nacimiento</label>
+    <div class="user-value">{{ fechaNacimiento }}</div>
+  </div>
+
+  <div class="user-field">
+    <label class="user-label">Teléfono</label>
+    <div class="user-value">{{ telefono }}</div>
+  </div>
+</section>
