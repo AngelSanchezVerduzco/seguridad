@@ -102,11 +102,11 @@
   <div class="auth-card">
     <h1 class="auth-title">Iniciar sesión</h1>
     <p class="auth-subtitle">
-      Página estática de login. Más adelante podrás conectar este formulario con tu API o servicio de
-      autenticación.
+      Cualquier usuario se acepta, pero la contraseña debe tener mínimo 10 caracteres y al menos un
+      símbolo especial.
     </p>
 
-    <form>
+    <form [formGroup]="form" (ngSubmit)="onLogin()">
       <div class="auth-field">
         <label class="auth-label" for="login-email">Correo electrónico</label>
         <input
@@ -114,6 +114,8 @@
           type="email"
           class="auth-input"
           pInputText
+          formControlName="email"
+          [invalid]="isInvalid('email')"
           placeholder="tu@correo.com"
         />
       </div>
@@ -125,19 +127,23 @@
           type="password"
           class="auth-input"
           pInputText
-          placeholder="••••••••"
+          formControlName="password"
+          [invalid]="isInvalid('password')"
+          placeholder="Mín. 10 caracteres y un símbolo"
         />
+        <small class="hint">Símbolos permitidos: {{ simbolosEspeciales }}</small>
       </div>
 
       <p-button
-        type="button"
+        type="submit"
         label="Entrar"
         styleClass="auth-button"
+        [disabled]="form.invalid"
       ></p-button>
 
       <div class="auth-footer">
         <span>¿No tienes cuenta?</span>
-        <a class="auth-link" href="/auth/register">Crear una cuenta</a>
+        <a class="auth-link" routerLink="/auth/register">Crear una cuenta</a>
       </div>
     </form>
   </div>

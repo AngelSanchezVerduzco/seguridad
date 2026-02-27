@@ -64,6 +64,18 @@ function coincidirCon(campo: string): ValidatorFn {
   };
 }
 
+function maxDiezDigitos(): ValidatorFn {
+  return (control: AbstractControl): ValidationErrors | null => {
+    const valor = control.value;
+    if (!valor) return null;
+    const strValor = String(valor);
+    if (strValor.length > 10) {
+      return { maxDigitos: { max: 10, actual: strValor.length } };
+    }
+    return null;
+  };
+}
+
 @Component({
   selector: 'app-register',
   standalone: true,
@@ -104,7 +116,7 @@ export class Register {
       nombreCompleto: ['', [Validators.required]],
       direccion: ['', [Validators.required]],
       fechaNacimiento: [null as Date | null, [Validators.required, mayorDeEdad()]],
-      telefono: [null as number | null, [Validators.required]],
+      telefono: [null as number | null, [Validators.required, maxDiezDigitos()]],
     });
 
     this.form.get('password')?.valueChanges.subscribe(() => {
@@ -127,6 +139,7 @@ export class Register {
     if (e['sinSimbolo']) return `La contraseña debe incluir al menos un símbolo: ${this.simbolosEspeciales}`;
     if (e['menorEdad']) return 'Debes ser mayor de edad (18 años).';
     if (e['noCoincide']) return 'No coincide con la contraseña.';
+    if (e['maxDigitos']) return `El teléfono no puede exceder 10 dígitos.`;
     return 'Valor no válido.';
   }
 

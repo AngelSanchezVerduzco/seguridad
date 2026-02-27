@@ -1,0 +1,113 @@
+<style>
+  .home-layout {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    background: #f1f5f9;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+
+  .home-sidebar {
+    background: #0f172a;
+    color: #e5e7eb;
+    padding: 1.5rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .home-logo {
+    font-size: 1.1rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  .home-content {
+    padding: 1.75rem 2rem;
+  }
+
+  .home-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .home-title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .home-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .home-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+    max-width: 640px;
+  }
+
+  .home-card h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.2rem;
+    color: #0f172a;
+  }
+
+  .home-card p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: #64748b;
+  }
+
+  @media (max-width: 768px) {
+    .home-layout {
+      grid-template-columns: 1fr;
+    }
+
+    .home-sidebar {
+      grid-row: 1;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+</style>
+
+<section class="home-layout">
+  <aside class="home-sidebar">
+    <div class="home-logo">Seguridad · Demo</div>
+    <p-panelMenu [model]="items"></p-panelMenu>
+  </aside>
+
+  <main class="home-content">
+    <header class="home-header">
+      <div>
+        <h1 class="home-title">Home</h1>
+        <p class="home-subtitle">Zona sencilla de ejemplo. Solo front, sin backend.</p>
+      </div>
+      <button
+        pButton
+        type="button"
+        label="Cerrar sesión"
+        (click)="logout()"
+        severity="secondary"
+      ></button>
+    </header>
+
+    <section class="home-card">
+      <h2>Bienvenido al Home</h2>
+      <p>
+        Esta es una pantalla de inicio simple con un sidebar como menú usando PrimeNG. Más adelante
+        puedes conectar esto con dashboards o datos reales de seguridad.
+      </p>
+    </section>
+  </main>
+</section>
