@@ -6,6 +6,8 @@ import { MainLayout } from './layout/main-layout';
 import { Home } from './pages/home/home';
 import { Group } from './pages/group/group';
 import { User } from './pages/user/user';
+import { GroupCrud } from './pages/group-crud/group-crud';
+import { Perfil } from './pages/perfil/perfil';
 
 export const routes: Routes = [
   {
@@ -34,8 +36,16 @@ export const routes: Routes = [
         component: Group,
       },
       {
+        path: 'group/crud',
+        component: GroupCrud,
+      },
+      {
         path: 'user',
-        component: User,
+        component: Perfil,
+      },
+      {
+        path: 'perfil',
+        redirectTo: 'user',
       },
     ],
   },

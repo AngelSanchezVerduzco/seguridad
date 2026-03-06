@@ -1,0 +1,110 @@
+<style>
+  .perfil-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .perfil-title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .perfil-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .perfil-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+    max-width: 560px;
+  }
+
+  .perfil-field {
+    margin-bottom: 1rem;
+  }
+
+  .perfil-label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+  }
+
+  .perfil-actions {
+    margin-top: 1.25rem;
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  }
+
+  .w-full,
+  .w-full input,
+  .w-full textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+</style>
+
+<header class="perfil-header">
+  <h1 class="perfil-title">Perfil</h1>
+  <p class="perfil-subtitle">RUD: ver, editar y borrar datos del registro</p>
+</header>
+
+<section class="perfil-card">
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <div class="perfil-field">
+      <label class="perfil-label">Usuario</label>
+      <input pInputText class="w-full" formControlName="usuario" placeholder="x" />
+    </div>
+
+    <div class="perfil-field">
+      <label class="perfil-label">Correo electrónico</label>
+      <input pInputText class="w-full" formControlName="email" placeholder="x@x.com" />
+    </div>
+
+    <div class="perfil-field">
+      <label class="perfil-label">Nombre completo</label>
+      <input pInputText class="w-full" formControlName="nombreCompleto" placeholder="x" />
+    </div>
+
+    <div class="perfil-field">
+      <label class="perfil-label">Dirección</label>
+      <textarea
+        pTextarea
+        class="w-full"
+        rows="2"
+        formControlName="direccion"
+        placeholder="x"
+      ></textarea>
+    </div>
+
+    <div class="perfil-field">
+      <label class="perfil-label">Fecha de nacimiento</label>
+      <input pInputText class="w-full" formControlName="fechaNacimiento" placeholder="dd/mm/aaaa" />
+    </div>
+
+    <div class="perfil-field">
+      <label class="perfil-label">Teléfono</label>
+      <input pInputText class="w-full" formControlName="telefono" placeholder="xxxxxxxxxx" />
+    </div>
+
+    <div class="perfil-actions">
+      <button pButton type="submit" label="Guardar"></button>
+      <button
+        pButton
+        type="button"
+        label="Resetear"
+        severity="secondary"
+        (click)="resetear()"
+      ></button>
+      <button pButton type="button" label="Borrar" severity="danger" (click)="borrar()"></button>
+    </div>
+  </form>
+</section>
+

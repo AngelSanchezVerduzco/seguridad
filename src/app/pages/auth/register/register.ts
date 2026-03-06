@@ -17,6 +17,7 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { PasswordModule } from 'primeng/password';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { RouterLink } from '@angular/router';
+import { ProfileStore } from '../../../services/profile-store';
 
 /** Símbolos especiales permitidos para la contraseña */
 const SIMBOLOS_ESPECIALES = '!@#$%^&*()_+-=[]{}|;\':",./<>?';
@@ -103,7 +104,8 @@ export class Register {
 
   constructor(
     private fb: FormBuilder,
-    private messageService: MessageService
+    private messageService: MessageService,
+    private profileStore: ProfileStore
   ) {
     const hoy = new Date();
     this.maxDate = new Date(hoy.getFullYear() - 18, hoy.getMonth(), hoy.getDate());
@@ -153,6 +155,32 @@ export class Register {
       });
       return;
     }
+
+    const v = this.form.getRawValue() as {
+      usuario: string;
+      email: string;
+      nombreCompleto: string;
+      direccion: string;
+      fechaNacimiento: Date | null;
+      telefono: number | null;
+    };
+
+    const fecha =
+      v.fechaNacimiento instanceof Date
+        ? `${String(v.fechaNacimiento.getDate()).padStart(2, '0')}/${String(
+            v.fechaNacimiento.getMonth() + 1
+          ).padStart(2, '0')}/${v.fechaNacimiento.getFullYear()}`
+        : '';
+
+    this.profileStore.set({
+      usuario: v.usuario ?? '',
+      email: v.email ?? '',
+      nombreCompleto: v.nombreCompleto ?? '',
+      direccion: v.direccion ?? '',
+      fechaNacimiento: fecha,
+      telefono: v.telefono !== null && v.telefono !== undefined ? String(v.telefono) : '',
+    });
+
     this.messageService.add({
       severity: 'success',
       summary: 'Registro enviado',

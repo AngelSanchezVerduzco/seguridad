@@ -3,6 +3,7 @@ import { Router, RouterOutlet } from '@angular/router';
 import { PanelMenuModule } from 'primeng/panelmenu';
 import { ButtonModule } from 'primeng/button';
 import { MenuItem } from 'primeng/api';
+import { ProfileStore } from '../services/profile-store';
 
 @Component({
   selector: 'app-main-layout',
@@ -36,9 +37,14 @@ export class MainLayout {
     },
   ];
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private profileStore: ProfileStore
+  ) {}
 
   logout(): void {
+    // Al cerrar sesión, reseteamos los datos "de sesión" del perfil.
+    this.profileStore.clear();
     this.router.navigate(['/auth/login']);
   }
 }

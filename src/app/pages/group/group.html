@@ -1,8 +1,4 @@
 <style>
-  .group-content {
-    padding: 1.75rem 2rem;
-  }
-
   .group-header {
     margin-bottom: 1.5rem;
   }
@@ -24,7 +20,6 @@
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    max-width: 640px;
   }
 
   .group-total {
@@ -32,6 +27,7 @@
     border-radius: 16px;
     padding: 1.5rem 1.75rem;
     box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+    max-width: 360px;
   }
 
   .group-total-label {
@@ -47,21 +43,12 @@
     color: #0f172a;
   }
 
-  .group-advance {
+  .group-table {
     background: #ffffff;
     border-radius: 16px;
-    padding: 1.5rem 1.75rem;
+    padding: 1rem;
     box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
-    min-height: 200px;
-    border: 2px dashed #cbd5e1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .group-advance-placeholder {
-    color: #94a3b8;
-    font-size: 0.95rem;
+    max-width: 1000px;
   }
 </style>
 
@@ -73,10 +60,45 @@
 <section class="group-section">
   <div class="group-total">
     <p class="group-total-label">Total</p>
-    <p class="group-total-value">1</p>
+    <p class="group-total-value">{{ groupStore.total() }}</p>
   </div>
 
-  <div class="group-advance">
-    <span class="group-advance-placeholder">Advance</span>
+  <div class="group-table">
+    <p-table
+      [value]="groupStore.groups()"
+      [paginator]="true"
+      [rows]="8"
+      [rowsPerPageOptions]="[8, 15, 25]"
+    >
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Nivel</th>
+          <th>Autor</th>
+          <th>Nombre</th>
+          <th>Integrantes</th>
+          <th>Tickets</th>
+          <th>Descripción</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-g>
+        <tr>
+          <td>{{ g.nivel }}</td>
+          <td>{{ g.autor }}</td>
+          <td>{{ g.nombre }}</td>
+          <td>{{ g.integrantes }}</td>
+          <td>{{ g.tickets }}</td>
+          <td style="max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+            {{ g.descripcion }}
+          </td>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="6" style="color: #64748b">Aún no hay grupos creados en `/group/crud`.</td>
+        </tr>
+      </ng-template>
+    </p-table>
   </div>
 </section>
