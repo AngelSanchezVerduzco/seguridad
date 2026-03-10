@@ -1,0 +1,376 @@
+<style>
+  .header {
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+  }
+
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.75rem;
+    margin-top: 0.75rem;
+  }
+
+  .stat {
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.9rem;
+    background: #f8fafc;
+  }
+
+  .stat-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 650;
+    color: #64748b;
+  }
+
+  .stat-value {
+    margin: 0.35rem 0 0;
+    font-size: 1.6rem;
+    font-weight: 750;
+    color: #0f172a;
+  }
+
+  .filters {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr 1fr;
+    gap: 0.75rem;
+    align-items: end;
+    margin-top: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+  }
+
+  .w-full,
+  .w-full input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .view-toggle {
+    display: inline-flex;
+    background: #f1f5f9;
+    border-radius: 10px;
+    padding: 4px;
+    gap: 2px;
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+  }
+
+  .view-toggle button {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: none;
+    background: transparent;
+    color: #64748b;
+  }
+
+  .view-toggle button:hover {
+    color: #0f172a;
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .view-toggle button.active {
+    background: #22c55e;
+    color: white;
+    box-shadow: 0 2px 8px rgba(34, 197, 94, 0.35);
+  }
+
+  .kanban {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-top: 1rem;
+  }
+
+  .col {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 0.75rem;
+    min-height: 240px;
+    transition: background 0.2s ease, border-color 0.2s ease;
+  }
+
+  .col.cdk-drop-list-dragging {
+    background: #e0f2fe;
+    border-color: #0ea5e9;
+  }
+
+  .col-title {
+    margin: 0 0 0.6rem;
+    font-weight: 750;
+    color: #0f172a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .ticket-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem;
+    margin-bottom: 0.6rem;
+    cursor: grab;
+    transition: transform 0.08s ease, box-shadow 0.12s ease;
+  }
+
+  .ticket-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(15, 23, 42, 0.12);
+  }
+
+  .ticket-card:active {
+    cursor: grabbing;
+  }
+
+  .ticket-card.cdk-drag-dragging {
+    opacity: 0.9;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.2);
+    cursor: grabbing;
+  }
+
+  .ticket-card.cdk-drag-placeholder {
+    opacity: 0.4;
+    border-style: dashed;
+  }
+
+  .ticket-title {
+    margin: 0 0 0.35rem;
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ticket-meta {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    color: #64748b;
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 1050px) {
+    .stats {
+      grid-template-columns: 1fr 1fr;
+    }
+    .filters {
+      grid-template-columns: 1fr;
+    }
+    .kanban {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<header class="header">
+  <div>
+    <h1 class="title">Dashboard</h1>
+    <p class="subtitle">
+      Resumen de tickets y vista por grupo. Al seleccionar un grupo, se actualiza la vista automáticamente.
+    </p>
+  </div>
+
+  <div class="view-toggle">
+    <button
+      type="button"
+      [class.active]="viewMode() === 'Lista'"
+      (click)="viewMode.set('Lista')"
+    >
+      <i class="pi pi-list" style="margin-right: 0.4rem"></i>Lista
+    </button>
+    <button
+      type="button"
+      [class.active]="viewMode() === 'Kanban'"
+      (click)="viewMode.set('Kanban')"
+    >
+      <i class="pi pi-th-large" style="margin-right: 0.4rem"></i>Kanban
+    </button>
+  </div>
+</header>
+
+<section class="card">
+  <div class="field">
+    <label>Grupo</label>
+    <p-select
+      class="w-full"
+      [options]="groupFilterOptions()"
+      [ngModel]="selectedGroupId()"
+      (ngModelChange)="selectedGroupId.set($event)"
+      optionLabel="label"
+      optionValue="value"
+      [showClear]="true"
+      placeholder="Todos los grupos"
+    ></p-select>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <p class="stat-label">Total</p>
+      <p class="stat-value">{{ ticketsBase().length }}</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Pendiente</p>
+      <p class="stat-value">{{ countsByStatusForSelection().Pendiente }}</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">En progreso</p>
+      <p class="stat-value">{{ countsByStatusForSelection()['En progreso'] }}</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Revisión</p>
+      <p class="stat-value">{{ countsByStatusForSelection()['Revisión'] }}</p>
+    </div>
+    <div class="stat">
+      <p class="stat-label">Finalizada</p>
+      <p class="stat-value">{{ countsByStatusForSelection().Finalizada }}</p>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="field">
+      <label>Búsqueda</label>
+      <input pInputText class="w-full" [ngModel]="query()" (ngModelChange)="query.set(($event ?? '').toString())" />
+    </div>
+
+    <div class="field">
+      <label>Status</label>
+      <p-select
+        class="w-full"
+        [options]="statusFilterOptions()"
+        [ngModel]="statusFilter()"
+        (ngModelChange)="statusFilter.set($event)"
+        optionLabel="label"
+        optionValue="value"
+      ></p-select>
+    </div>
+
+    <div class="field">
+      <label>Prioridad</label>
+      <p-select
+        class="w-full"
+        [options]="priorityFilterOptions()"
+        [ngModel]="priorityFilter()"
+        (ngModelChange)="priorityFilter.set($event)"
+        optionLabel="label"
+        optionValue="value"
+      ></p-select>
+    </div>
+
+    <div class="field">
+      <label>Orden</label>
+      <p-select
+        class="w-full"
+        [options]="sortOptions()"
+        [ngModel]="sortKey()"
+        (ngModelChange)="sortKey.set($event)"
+        optionLabel="label"
+        optionValue="value"
+      ></p-select>
+    </div>
+
+    <div class="field" style="display: flex; align-items: end; justify-content: flex-end">
+      <div *ifHasPermission="['ticket_add', 'tickets_add']">
+        <a routerLink="/tickets">
+          <button pButton type="button" label="Ir a Tickets" icon="pi pi-external-link"></button>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  @if (viewMode() === 'Lista') {
+    <div style="margin-top: 1rem; display: grid; gap: 0.6rem">
+      @for (t of ticketsFiltered(); track t.id) {
+        <div class="ticket-card" (click)="irTicket(t)">
+          <p class="ticket-title">{{ t.titulo }}</p>
+          <div class="ticket-meta">
+            <p-tag [value]="t.estado" [severity]="statusSeverity(t.estado)"></p-tag>
+            <p-tag [value]="t.prioridad" [severity]="prioritySeverity(t.prioridad)"></p-tag>
+            <span>·</span>
+            <span>{{ groupName(t.groupId) }}</span>
+            <span>·</span>
+            <span>FC: {{ formatDate(t.createdAt) }}</span>
+            <span>·</span>
+            <span>FL: {{ formatDate(t.fechaLimite) }}</span>
+          </div>
+        </div>
+      } @empty {
+        <div style="color: #64748b; margin-top: 1rem">No hay tickets para mostrar con estos filtros.</div>
+      }
+    </div>
+  } @else {
+    <div class="kanban" cdkDropListGroup>
+      @for (s of statusOptions; track s) {
+        <div
+          class="col"
+          cdkDropList
+          [id]="'col-' + s"
+          [cdkDropListConnectedTo]="connectedTo(s)"
+          [cdkDropListData]="s"
+          cdkDropListSortingDisabled
+          (cdkDropListDropped)="onTicketDrop($event)"
+        >
+          <div class="col-title">
+            <span>{{ s }}</span>
+            <p-tag [value]="kanbanColumn(s).length + ''" severity="secondary"></p-tag>
+          </div>
+
+          @for (t of kanbanColumn(s); track t.id) {
+            <div class="ticket-card" cdkDrag [cdkDragData]="t" (click)="irTicket(t)">
+              <p class="ticket-title">{{ t.titulo }}</p>
+              <div class="ticket-meta">
+                <p-tag [value]="t.prioridad" [severity]="prioritySeverity(t.prioridad)"></p-tag>
+                <span>·</span>
+                <span>{{ t.asignadoA }}</span>
+                <span>·</span>
+                <span>FL: {{ formatDate(t.fechaLimite) }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div style="color: #64748b; padding: 0.5rem 0">Sin tickets.</div>
+          }
+        </div>
+      }
+    </div>
+  }
+</section>
+

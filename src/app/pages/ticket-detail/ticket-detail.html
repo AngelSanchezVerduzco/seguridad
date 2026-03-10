@@ -1,0 +1,273 @@
+<style>
+  .header {
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .field label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #475569;
+    margin-bottom: 0.35rem;
+  }
+
+  .value {
+    color: #0f172a;
+    font-weight: 550;
+  }
+
+  .w-full,
+  .w-full input,
+  .w-full textarea {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  .comment-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+  }
+
+  .comment {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 0.75rem;
+    background: #f8fafc;
+  }
+
+  .comment-meta {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 0.35rem;
+  }
+
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+@if (!ticket()) {
+  <section class="card">
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap">
+      <div style="color: #0f172a; font-weight: 650">Ticket no encontrado.</div>
+      <a routerLink="/tickets">Volver a tickets</a>
+    </div>
+  </section>
+} @else {
+  <header class="header">
+    <div>
+      <h1 class="title">Ticket detail</h1>
+      <p class="subtitle">{{ ticket()!.titulo }}</p>
+    </div>
+
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+      <a routerLink="/tickets">
+        <button pButton type="button" label="Volver" icon="pi pi-arrow-left" severity="secondary"></button>
+      </a>
+      <div *ifHasPermission="['ticket_edit', 'tickets_edit']">
+        <button pButton type="button" label="Editar" icon="pi pi-pencil" (click)="editar()"></button>
+      </div>
+      <div *ifHasPermission="['ticket_delete', 'tickets_delete']">
+        <button pButton type="button" label="Eliminar" icon="pi pi-trash" severity="danger" (click)="eliminar()"></button>
+      </div>
+    </div>
+  </header>
+
+  <section class="card">
+    <div class="grid">
+      <div class="field">
+        <label>Grupo</label>
+        <div class="value">{{ groupName(ticket()!.groupId) }}</div>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <p-tag [value]="ticket()!.estado" [severity]="statusSeverity(ticket()!.estado)"></p-tag>
+      </div>
+
+      <div class="field">
+        <label>Prioridad</label>
+        <p-tag [value]="ticket()!.prioridad" [severity]="prioritySeverity(ticket()!.prioridad)"></p-tag>
+      </div>
+      <div class="field">
+        <label>Asignado a</label>
+        <div class="value">{{ ticket()!.asignadoA }}</div>
+      </div>
+
+      <div class="field">
+        <label>Fecha de creación</label>
+        <div class="value">{{ formatDate(ticket()!.createdAt) }}</div>
+      </div>
+      <div class="field">
+        <label>Fecha límite</label>
+        <div class="value">{{ ticket()!.fechaLimite ? formatDate(ticket()!.fechaLimite) : '-' }}</div>
+      </div>
+
+      <div class="field" style="grid-column: span 2">
+        <label>Descripción</label>
+        <div class="value" style="white-space: pre-wrap">{{ ticket()!.descripcion }}</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" style="margin-top: 1rem">
+    <h3 style="margin: 0 0 0.25rem; color: #0f172a">Comentarios</h3>
+    <p style="margin: 0; color: #64748b; font-size: 0.9rem">Se guardan en el ticket y quedan en el historial.</p>
+
+    <div class="comment-row">
+      <input pInputText class="w-full" [formControl]="commentControl" placeholder="Escribe un comentario..." />
+      <button pButton type="button" label="Agregar" icon="pi pi-send" (click)="agregarComentario()"></button>
+    </div>
+
+    <div style="margin-top: 0.75rem; display: grid; gap: 0.5rem">
+      @for (c of ticket()!.comentarios; track c.id) {
+        <div class="comment">
+          <div class="comment-meta">{{ c.author }} · {{ formatDate(c.createdAt) }}</div>
+          <div style="white-space: pre-wrap">{{ c.text }}</div>
+        </div>
+      } @empty {
+        <div style="color: #64748b; margin-top: 0.75rem">Sin comentarios aún.</div>
+      }
+    </div>
+  </section>
+
+  <section class="card" style="margin-top: 1rem">
+    <h3 style="margin: 0 0 0.75rem; color: #0f172a">Historial de cambios</h3>
+    <p-table [value]="ticket()!.historial" [paginator]="true" [rows]="8" [rowsPerPageOptions]="[8, 15, 25]">
+      <ng-template pTemplate="header">
+        <tr>
+          <th>Fecha</th>
+          <th>Campo</th>
+          <th>De</th>
+          <th>A</th>
+          <th>Por</th>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="body" let-h>
+        <tr>
+          <td>{{ formatDate(h.changedAt) }}</td>
+          <td>{{ h.field }}</td>
+          <td style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ h.from }}</td>
+          <td style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ h.to }}</td>
+          <td>{{ h.by }}</td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr>
+          <td colspan="5" style="color: #64748b">Sin historial aún.</td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </section>
+
+  <p-dialog
+    header="Editar ticket"
+    [(visible)]="dialogVisible"
+    [modal]="true"
+    [draggable]="false"
+    [style]="{ width: 'min(820px, 95vw)' }"
+  >
+    <form [formGroup]="form" (ngSubmit)="guardar()">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem">
+        <div class="field">
+          <label>Grupo</label>
+          <p-select
+            class="w-full"
+            [options]="groupOptions()"
+            formControlName="groupId"
+            optionLabel="label"
+            optionValue="value"
+          ></p-select>
+        </div>
+
+        <div class="field">
+          <label>Status</label>
+          <p-select
+            class="w-full"
+            [options]="statusOptions"
+            formControlName="estado"
+          ></p-select>
+        </div>
+
+        <div class="field" style="grid-column: span 2">
+          <label>Título</label>
+          <input pInputText class="w-full" formControlName="titulo" />
+        </div>
+
+        <div class="field" style="grid-column: span 2">
+          <label>Descripción</label>
+          <textarea pTextarea class="w-full" rows="3" formControlName="descripcion"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Asignado a</label>
+          <input pInputText class="w-full" formControlName="asignadoA" />
+        </div>
+
+        <div class="field">
+          <label>Prioridad</label>
+          <p-select
+            class="w-full"
+            [options]="priorityOptions"
+            formControlName="prioridad"
+          ></p-select>
+        </div>
+
+        <div class="field">
+          <label>Fecha de creación</label>
+          <input pInputText class="w-full" [disabled]="true" [value]="formatDate(ticket()!.createdAt)" />
+        </div>
+
+        <div class="field">
+          <label>Fecha límite</label>
+          <p-datepicker
+            class="w-full"
+            formControlName="fechaLimite"
+            [showIcon]="true"
+            dateFormat="dd/mm/yy"
+          ></p-datepicker>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem">
+        <button pButton type="button" label="Cancelar" severity="secondary" (click)="dialogVisible = false"></button>
+        <button pButton type="submit" label="Guardar"></button>
+      </div>
+    </form>
+  </p-dialog>
+}
+

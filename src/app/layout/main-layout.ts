@@ -16,17 +16,22 @@ export class MainLayout {
   appVersion = '0.0.0';
   items: MenuItem[] = [
     {
-      label: 'Inicio',
-      icon: 'pi pi-home',
-      routerLink: ['/home'],
+      label: 'Dashboard',
+      icon: 'pi pi-chart-bar',
+      routerLink: ['/dashboard'],
     },
     {
-      label: 'Group',
+      label: 'Tickets',
+      icon: 'pi pi-ticket',
+      routerLink: ['/tickets'],
+    },
+    {
+      label: 'Grupos',
       icon: 'pi pi-users',
-      routerLink: ['/group'],
+      routerLink: ['/group/crud'],
     },
     {
-      label: 'User',
+      label: 'Perfil',
       icon: 'pi pi-user',
       routerLink: ['/user'],
     },

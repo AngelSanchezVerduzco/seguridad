@@ -1,12 +1,12 @@
 import { Component, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormControl, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { DialogModule } from 'primeng/dialog';
 import { InputTextModule } from 'primeng/inputtext';
 import { TextareaModule } from 'primeng/textarea';
-import { InputNumberModule } from 'primeng/inputnumber';
 import { TableModule } from 'primeng/table';
 import { GroupEntity, GroupStore } from '../../services/group-store';
+import { IfHasPermissionDirective } from '../../directives/if-has-permission.directive';
 
 @Component({
   selector: 'app-group-crud',
@@ -17,8 +17,8 @@ import { GroupEntity, GroupStore } from '../../services/group-store';
     DialogModule,
     InputTextModule,
     TextareaModule,
-    InputNumberModule,
     TableModule,
+    IfHasPermissionDirective,
   ],
   templateUrl: './group-crud.html',
 })
@@ -26,13 +26,13 @@ export class GroupCrud {
   private readonly fb = inject(FormBuilder);
   dialogVisible = false;
   editing: GroupEntity | null = null;
+  memberControl = new FormControl<string>('', { nonNullable: true });
+  pendingMembers: string[] = [];
 
   readonly form = this.fb.group({
     nivel: ['', [Validators.required]],
     autor: ['', [Validators.required]],
     nombre: ['', [Validators.required]],
-    integrantes: [1, [Validators.required]],
-    tickets: [0, [Validators.required]],
     descripcion: ['', [Validators.required]],
   });
 
@@ -44,10 +44,10 @@ export class GroupCrud {
       nivel: '',
       autor: '',
       nombre: '',
-      integrantes: 1,
-      tickets: 0,
       descripcion: '',
     });
+    this.memberControl.setValue('');
+    this.pendingMembers = [];
     this.dialogVisible = true;
   }
 
@@ -57,15 +57,28 @@ export class GroupCrud {
       nivel: g.nivel,
       autor: g.autor,
       nombre: g.nombre,
-      integrantes: g.integrantes,
-      tickets: g.tickets,
       descripcion: g.descripcion,
     });
+    this.memberControl.setValue('');
+    this.pendingMembers = Array.isArray(g.miembros) ? [...g.miembros] : [];
     this.dialogVisible = true;
   }
 
   eliminar(g: GroupEntity): void {
     this.groupStore.remove(g.id);
+  }
+
+  agregarMiembro(): void {
+    const value = (this.memberControl.value ?? '').trim();
+    if (!value) return;
+    if (!this.pendingMembers.includes(value)) {
+      this.pendingMembers = [...this.pendingMembers, value];
+    }
+    this.memberControl.setValue('');
+  }
+
+  quitarMiembro(handle: string): void {
+    this.pendingMembers = this.pendingMembers.filter((m) => m !== handle);
   }
 
   guardar(): void {
@@ -77,15 +90,17 @@ export class GroupCrud {
       nivel: String(v.nivel ?? ''),
       autor: String(v.autor ?? ''),
       nombre: String(v.nombre ?? ''),
-      integrantes: Number(v.integrantes ?? 0),
-      tickets: Number(v.tickets ?? 0),
       descripcion: String(v.descripcion ?? ''),
+      miembros: [...this.pendingMembers],
     };
 
     if (this.editing) {
       this.groupStore.update(this.editing.id, payload);
     } else {
-      this.groupStore.add(payload);
+      this.groupStore.add({
+        ...payload,
+        tickets: 0,
+      });
     }
 
     this.dialogVisible = false;

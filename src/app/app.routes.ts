@@ -1,18 +1,18 @@
 import { Routes } from '@angular/router';
-import { LandingPages } from './pages/landing-pages/landing-pages';
 import { Login } from './pages/auth/login/login';
 import { Register } from './pages/auth/register/register';
 import { MainLayout } from './layout/main-layout';
-import { Home } from './pages/home/home';
 import { Group } from './pages/group/group';
-import { User } from './pages/user/user';
 import { GroupCrud } from './pages/group-crud/group-crud';
 import { Perfil } from './pages/perfil/perfil';
+import { Dashboard } from './pages/dashboard/dashboard';
+import { Tickets } from './pages/tickets/tickets';
+import { TicketDetail } from './pages/ticket-detail/ticket-detail';
 
 export const routes: Routes = [
   {
     path: '',
-    component: LandingPages,
+    redirectTo: 'dashboard',
     pathMatch: 'full',
   },
   {
@@ -28,8 +28,8 @@ export const routes: Routes = [
     component: MainLayout,
     children: [
       {
-        path: 'home',
-        component: Home,
+        path: 'dashboard',
+        component: Dashboard,
       },
       {
         path: 'group',
@@ -38,6 +38,14 @@ export const routes: Routes = [
       {
         path: 'group/crud',
         component: GroupCrud,
+      },
+      {
+        path: 'tickets',
+        component: Tickets,
+      },
+      {
+        path: 'tickets/:id',
+        component: TicketDetail,
       },
       {
         path: 'user',
