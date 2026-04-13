@@ -4,7 +4,8 @@ import { Injectable, signal } from '@angular/core';
   providedIn: 'root'
 })
 export class PermissionService {
-  private permissions = signal<string[]>([]);
+  /** Signal reactivo: se puede leer en templates y computeds. */
+  readonly permissions = signal<string[]>([]);
 
   setPermissions(perms: string[]) {
     this.permissions.set(perms);
@@ -15,6 +16,6 @@ export class PermissionService {
   }
 
   hasAnyPermission(perms: string[]): boolean {
-    return perms.some(p => this.hasPermission(p));
+    return perms.some(p => this.permissions().includes(p));
   }
 }

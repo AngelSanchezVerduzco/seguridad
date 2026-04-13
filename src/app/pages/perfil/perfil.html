@@ -49,6 +49,37 @@
     width: 100%;
     box-sizing: border-box;
   }
+
+  .perfil-card input.p-inputtext,
+  .perfil-card textarea.p-textarea {
+    background: #ffffff;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+  }
+
+  .perfil-hint {
+    margin: 0 0 1rem;
+    font-size: 0.85rem;
+    color: #64748b;
+  }
+
+  .perfil-msg-ok {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    background: #ecfdf5;
+    color: #047857;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
+
+  .perfil-msg-err {
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    background: #fef2f2;
+    color: #b91c1c;
+    border-radius: 8px;
+    font-size: 0.9rem;
+  }
 </style>
 
 <header class="perfil-header">
@@ -57,6 +88,26 @@
 </header>
 
 <section class="perfil-card">
+  @if (tieneSesionApi()) {
+    <p class="perfil-hint">
+      Los cambios se guardan en el servidor. La fecha puede ser <code>YYYY-MM-DD</code> o <code>dd/mm/aaaa</code>.
+    </p>
+  } @else {
+    <p class="perfil-hint">
+      Sin token de API: Guardar solo actualiza datos en este navegador. Para sincronizar con la cuenta, inicia sesión por correo y contraseña.
+    </p>
+  }
+
+  @if (saveMessage) {
+    <p class="perfil-msg-ok">{{ saveMessage }}</p>
+  }
+  @if (saveError) {
+    <p class="perfil-msg-err">{{ saveError }}</p>
+  }
+  @if (deleteError) {
+    <p class="perfil-msg-err">{{ deleteError }}</p>
+  }
+
   <form [formGroup]="form" (ngSubmit)="guardar()">
     <div class="perfil-field">
       <label class="perfil-label">Usuario</label>
@@ -95,15 +146,24 @@
     </div>
 
     <div class="perfil-actions">
-      <button pButton type="submit" label="Guardar"></button>
+      <button pButton type="submit" label="Guardar" [disabled]="saving || deleting" [loading]="saving"></button>
       <button
         pButton
         type="button"
         label="Resetear"
         severity="secondary"
+        [disabled]="saving || deleting"
         (click)="resetear()"
       ></button>
-      <button pButton type="button" label="Borrar" severity="danger" (click)="borrar()"></button>
+      <button
+        pButton
+        type="button"
+        label="Borrar cuenta"
+        severity="danger"
+        [disabled]="saving || deleting"
+        [loading]="deleting"
+        (click)="borrar()"
+      ></button>
     </div>
   </form>
 </section>

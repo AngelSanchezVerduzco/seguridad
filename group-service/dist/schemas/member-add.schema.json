@@ -1,0 +1,8 @@
+{
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["handle"],
+    "properties": {
+        "handle": { "type": "string", "minLength": 1 }
+    }
+}

@@ -1,6 +1,9 @@
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, catchError, map, of, switchMap, tap, throwError } from 'rxjs';
+import { API_BASE_URL } from './api-config';
+import { AuthSession } from './auth-session';
 import { GroupStore } from './group-store';
-import { ProfileStore } from './profile-store';
 
 export type TicketStatus = 'Pendiente' | 'En progreso' | 'Revisión' | 'Finalizada';
 export type TicketPriority = 'Baja' | 'Media' | 'Alta';
@@ -36,14 +39,22 @@ export type TicketEntity = {
   updatedAt: number;
 };
 
+type ApiEnvelope<T> = {
+  statusCode: number;
+  intOpCode: number;
+  data: T[];
+};
+
+const LEGACY_STORAGE_KEY = 'app.tickets.v1';
+
 @Injectable({ providedIn: 'root' })
 export class TicketStore {
-  private readonly storageKey = 'app.tickets.v1';
-
+  private readonly http = inject(HttpClient);
+  private readonly auth = inject(AuthSession);
   private readonly groupStore = inject(GroupStore);
-  private readonly profileStore = inject(ProfileStore);
 
-  readonly tickets = signal<TicketEntity[]>(this.load());
+  readonly tickets = signal<TicketEntity[]>([]);
+  readonly listError = signal<string | null>(null);
   readonly total = computed(() => this.tickets().length);
 
   readonly countsByStatus = computed(() => {
@@ -57,6 +68,84 @@ export class TicketStore {
     return base;
   });
 
+  private ticketsUrl(): string {
+    return `${API_BASE_URL}/api/tickets`;
+  }
+
+  private authHeaders(): HttpHeaders | null {
+    const t = this.auth.accessToken();
+    if (!t) return null;
+    return new HttpHeaders({
+      Authorization: `Bearer ${t}`,
+      'Content-Type': 'application/json',
+    });
+  }
+
+  private clearLegacyLocalStorage(): void {
+    try {
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  }
+
+  private bumpTickets(list: TicketEntity[]): void {
+    setTimeout(() => this.tickets.set(list), 0);
+  }
+
+  /** Listado según permisos en ticket-service (grupos del actor). */
+  refresh(): Observable<void> {
+    const h = this.authHeaders();
+    if (!h) {
+      this.tickets.set([]);
+      return of(void 0);
+    }
+    return this.http.get<ApiEnvelope<Record<string, unknown>>>(this.ticketsUrl(), { headers: h }).pipe(
+      tap(() => this.listError.set(null)),
+      map((body) => (body.data ?? []).map((row) => this.mapApiTicket(row))),
+      map((list) => {
+        this.clearLegacyLocalStorage();
+        this.bumpTickets(list);
+        return void 0;
+      }),
+      catchError((err) => {
+        this.listError.set(this.toError(err).message);
+        this.bumpTickets([]);
+        return of(void 0);
+      }),
+    );
+  }
+
+  /** Carga un ticket por id (p. ej. enlace directo) y lo mezcla en la lista. */
+  ensureLoaded(id: string): Observable<void> {
+    const trimmed = (id ?? '').trim();
+    if (!trimmed || this.getById(trimmed)) return of(void 0);
+    const h = this.authHeaders();
+    if (!h) return of(void 0);
+    return this.http.get<ApiEnvelope<Record<string, unknown>>>(`${this.ticketsUrl()}/${trimmed}`, { headers: h }).pipe(
+      map((body) => {
+        const row = (body.data ?? [])[0] as Record<string, unknown> | undefined;
+        if (!row) return void 0;
+        const t = this.mapApiTicket(row);
+        setTimeout(() => this.upsertTicket(t), 0);
+        return void 0;
+      }),
+      catchError(() => of(void 0)),
+    );
+  }
+
+  private upsertTicket(t: TicketEntity): void {
+    this.tickets.update((list) => {
+      const i = list.findIndex((x) => x.id === t.id);
+      if (i >= 0) {
+        const next = [...list];
+        next[i] = t;
+        return next;
+      }
+      return [t, ...list];
+    });
+  }
+
   getById(id: string): TicketEntity | null {
     return this.tickets().find((t) => t.id === id) ?? null;
   }
@@ -64,6 +153,13 @@ export class TicketStore {
   listByGroup(groupId: string | null): TicketEntity[] {
     if (!groupId) return this.tickets();
     return this.tickets().filter((t) => t.groupId === groupId);
+  }
+
+  listByGroups(groupIds: string[] | null): TicketEntity[] {
+    if (groupIds === null) return this.tickets();
+    if (groupIds.length === 0) return [];
+    const set = new Set(groupIds);
+    return this.tickets().filter((t) => set.has(t.groupId));
   }
 
   add(data: {
@@ -74,242 +170,172 @@ export class TicketStore {
     asignadoA: string;
     prioridad: TicketPriority;
     fechaLimite: number | null;
-  }): void {
-    const now = Date.now();
-    const by = this.actor();
-    const ticket: TicketEntity = {
-      id: this.makeId(),
+  }): Observable<void> {
+    const h = this.authHeaders();
+    if (!h) return throwError(() => new Error('Inicia sesión para gestionar tickets.'));
+    const body: Record<string, unknown> = {
       groupId: String(data.groupId ?? ''),
       titulo: String(data.titulo ?? ''),
       descripcion: String(data.descripcion ?? ''),
       estado: data.estado,
       asignadoA: String(data.asignadoA ?? ''),
       prioridad: data.prioridad,
-      createdAt: now,
-      fechaLimite: data.fechaLimite ?? null,
-      comentarios: [],
-      historial: [
-        {
-          id: this.makeId(),
-          changedAt: now,
-          field: 'ticket',
-          from: '',
-          to: 'creado',
-          by,
-        },
-      ],
-      updatedAt: now,
+      fechaLimite: data.fechaLimite,
     };
-
-    const next = [...this.tickets(), ticket];
-    this.tickets.set(next);
-    this.save(next);
-    this.syncGroupTicketCount(ticket.groupId);
+    return this.http.post<ApiEnvelope<unknown>>(this.ticketsUrl(), body, { headers: h }).pipe(
+      switchMap(() => {
+        this.groupStore.refresh().subscribe();
+        return this.refresh();
+      }),
+      catchError((err) => throwError(() => this.toError(err))),
+    );
   }
 
   update(
     id: string,
     patch: Partial<
       Pick<TicketEntity, 'groupId' | 'titulo' | 'descripcion' | 'estado' | 'asignadoA' | 'prioridad' | 'fechaLimite'>
-    >
-  ): void {
-    const current = this.getById(id);
-    if (!current) return;
-
-    const by = this.actor();
-    const now = Date.now();
-    const updated: TicketEntity = {
-      ...current,
-      ...patch,
-      groupId: patch.groupId !== undefined ? String(patch.groupId ?? '') : current.groupId,
-      titulo: patch.titulo !== undefined ? String(patch.titulo ?? '') : current.titulo,
-      descripcion: patch.descripcion !== undefined ? String(patch.descripcion ?? '') : current.descripcion,
-      asignadoA: patch.asignadoA !== undefined ? String(patch.asignadoA ?? '') : current.asignadoA,
-      fechaLimite: patch.fechaLimite !== undefined ? (patch.fechaLimite ?? null) : current.fechaLimite,
-      updatedAt: now,
-    };
-
-    const changes: TicketHistoryEntry[] = [];
-    this.pushChange(changes, 'groupId', current.groupId, updated.groupId, by, now);
-    this.pushChange(changes, 'titulo', current.titulo, updated.titulo, by, now);
-    this.pushChange(changes, 'descripcion', current.descripcion, updated.descripcion, by, now);
-    this.pushChange(changes, 'estado', current.estado, updated.estado, by, now);
-    this.pushChange(changes, 'asignadoA', current.asignadoA, updated.asignadoA, by, now);
-    this.pushChange(changes, 'prioridad', current.prioridad, updated.prioridad, by, now);
-    this.pushChange(
-      changes,
-      'fechaLimite',
-      current.fechaLimite ? new Date(current.fechaLimite).toISOString() : '',
-      updated.fechaLimite ? new Date(updated.fechaLimite).toISOString() : '',
-      by,
-      now
+    >,
+  ): Observable<void> {
+    const h = this.authHeaders();
+    if (!h) return throwError(() => new Error('Inicia sesión para gestionar tickets.'));
+    const body: Record<string, unknown> = {};
+    if (patch.groupId !== undefined) body['groupId'] = patch.groupId;
+    if (patch.titulo !== undefined) body['titulo'] = patch.titulo;
+    if (patch.descripcion !== undefined) body['descripcion'] = patch.descripcion;
+    if (patch.estado !== undefined) body['estado'] = patch.estado;
+    if (patch.asignadoA !== undefined) body['asignadoA'] = patch.asignadoA;
+    if (patch.prioridad !== undefined) body['prioridad'] = patch.prioridad;
+    if (patch.fechaLimite !== undefined) body['fechaLimite'] = patch.fechaLimite;
+    return this.http.patch<ApiEnvelope<unknown>>(`${this.ticketsUrl()}/${id}`, body, { headers: h }).pipe(
+      switchMap(() => {
+        this.groupStore.refresh().subscribe();
+        return this.refresh();
+      }),
+      catchError((err) => throwError(() => this.toError(err))),
     );
-
-    if (changes.length) {
-      updated.historial = [...updated.historial, ...changes];
-    }
-
-    const next = this.tickets().map((t) => (t.id === id ? updated : t));
-    this.tickets.set(next);
-    this.save(next);
-
-    if (current.groupId !== updated.groupId) {
-      this.syncGroupTicketCount(current.groupId);
-      this.syncGroupTicketCount(updated.groupId);
-    } else {
-      this.syncGroupTicketCount(updated.groupId);
-    }
   }
 
-  remove(id: string): void {
-    const current = this.getById(id);
-    const next = this.tickets().filter((t) => t.id !== id);
-    this.tickets.set(next);
-    this.save(next);
-    if (current) this.syncGroupTicketCount(current.groupId);
+  remove(id: string): Observable<void> {
+    const h = this.authHeaders();
+    if (!h) return throwError(() => new Error('Inicia sesión para gestionar tickets.'));
+    return this.http.delete<ApiEnvelope<unknown>>(`${this.ticketsUrl()}/${id}`, { headers: h }).pipe(
+      switchMap(() => {
+        this.groupStore.refresh().subscribe();
+        return this.refresh();
+      }),
+      catchError((err) => throwError(() => this.toError(err))),
+    );
   }
 
-  addComment(ticketId: string, text: string): void {
-    const current = this.getById(ticketId);
-    if (!current) return;
+  addComment(ticketId: string, text: string): Observable<void> {
     const value = (text ?? '').trim();
-    if (!value) return;
+    if (!value) return of(void 0);
+    const h = this.authHeaders();
+    if (!h) return throwError(() => new Error('Inicia sesión para comentar.'));
+    return this.http
+      .post<ApiEnvelope<unknown>>(`${this.ticketsUrl()}/${ticketId}/comments`, { text: value }, { headers: h })
+      .pipe(
+        switchMap(() => this.refresh()),
+        catchError((err) => throwError(() => this.toError(err))),
+      );
+  }
 
+  private mapApiTicket(raw: Record<string, unknown>): TicketEntity {
+    const { message: _m, ...rest } = raw as Record<string, unknown> & { message?: string };
+    return this.normalizeEntity(rest);
+  }
+
+  private normalizeEntity(raw: Record<string, unknown>): TicketEntity {
     const now = Date.now();
-    const by = this.actor();
-    const comment: TicketComment = {
-      id: this.makeId(),
-      createdAt: now,
-      text: value,
-      author: by,
-    };
-
-    const updated: TicketEntity = {
-      ...current,
-      comentarios: [...current.comentarios, comment],
-      historial: [
-        ...current.historial,
-        {
-          id: this.makeId(),
-          changedAt: now,
-          field: 'comentario',
-          from: '',
-          to: value.slice(0, 120),
-          by,
-        },
-      ],
-      updatedAt: now,
-    };
-
-    const next = this.tickets().map((t) => (t.id === ticketId ? updated : t));
-    this.tickets.set(next);
-    this.save(next);
-  }
-
-  private actor(): string {
-    const p = this.profileStore.profile();
-    const user = (p?.usuario ?? '').trim();
-    if (user) return user;
-    const email = (p?.email ?? '').trim();
-    if (email) return email;
-    return 'anon';
-  }
-
-  private pushChange(
-    acc: TicketHistoryEntry[],
-    field: string,
-    from: unknown,
-    to: unknown,
-    by: string,
-    changedAt: number
-  ): void {
-    const a = String(from ?? '');
-    const b = String(to ?? '');
-    if (a === b) return;
-    acc.push({
-      id: this.makeId(),
-      changedAt,
-      field,
-      from: a,
-      to: b,
-      by,
-    });
-  }
-
-  private load(): TicketEntity[] {
-    try {
-      const raw = localStorage.getItem(this.storageKey);
-      if (!raw) return [];
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) return (parsed as any[]).map((t) => this.normalize(t));
-    } catch {
-      // ignore
-    }
-    return [];
-  }
-
-  private normalize(raw: any): TicketEntity {
-    const now = Date.now();
-    const estado: TicketStatus = this.isStatus(raw?.estado) ? raw.estado : 'Pendiente';
-    const prioridad: TicketPriority = this.isPriority(raw?.prioridad) ? raw.prioridad : 'Media';
-    const comentarios: TicketComment[] = Array.isArray(raw?.comentarios)
-      ? raw.comentarios
-          .filter((c: any) => c && typeof c === 'object')
-          .map((c: any) => ({
-            id: typeof c.id === 'string' ? c.id : this.makeId(),
-            text: typeof c.text === 'string' ? c.text : '',
-            createdAt: typeof c.createdAt === 'number' ? c.createdAt : now,
-            author: typeof c.author === 'string' ? c.author : 'anon',
-          }))
+    const estado: TicketStatus = this.isStatus(raw['estado']) ? raw['estado'] : 'Pendiente';
+    const prioridad: TicketPriority = this.isPriority(raw['prioridad']) ? raw['prioridad'] : 'Media';
+    const comentarios: TicketComment[] = Array.isArray(raw['comentarios'])
+      ? (raw['comentarios'] as unknown[])
+          .filter((c) => c && typeof c === 'object')
+          .map((c) => {
+            const o = c as Record<string, unknown>;
+            return {
+              id: typeof o['id'] === 'string' ? o['id'] : this.makeId(),
+              text: typeof o['text'] === 'string' ? o['text'] : '',
+              createdAt: typeof o['createdAt'] === 'number' ? o['createdAt'] : now,
+              author: typeof o['author'] === 'string' ? o['author'] : 'anon',
+            };
+          })
       : [];
-    const historial: TicketHistoryEntry[] = Array.isArray(raw?.historial)
-      ? raw.historial
-          .filter((h: any) => h && typeof h === 'object')
-          .map((h: any) => ({
-            id: typeof h.id === 'string' ? h.id : this.makeId(),
-            field: typeof h.field === 'string' ? h.field : 'ticket',
-            from: typeof h.from === 'string' ? h.from : '',
-            to: typeof h.to === 'string' ? h.to : '',
-            by: typeof h.by === 'string' ? h.by : 'anon',
-            changedAt: typeof h.changedAt === 'number' ? h.changedAt : now,
-          }))
+    const historial: TicketHistoryEntry[] = Array.isArray(raw['historial'])
+      ? (raw['historial'] as unknown[])
+          .filter((h) => h && typeof h === 'object')
+          .map((h) => this.normalizeHistoryEntry(h as Record<string, unknown>, now))
       : [];
 
     return {
-      id: typeof raw?.id === 'string' ? raw.id : this.makeId(),
-      groupId: typeof raw?.groupId === 'string' ? raw.groupId : '',
-      titulo: typeof raw?.titulo === 'string' ? raw.titulo : '',
-      descripcion: typeof raw?.descripcion === 'string' ? raw.descripcion : '',
+      id: typeof raw['id'] === 'string' ? raw['id'] : this.makeId(),
+      groupId: typeof raw['groupId'] === 'string' ? raw['groupId'] : '',
+      titulo: typeof raw['titulo'] === 'string' ? raw['titulo'] : '',
+      descripcion: typeof raw['descripcion'] === 'string' ? raw['descripcion'] : '',
       estado,
-      asignadoA: typeof raw?.asignadoA === 'string' ? raw.asignadoA : '',
+      asignadoA: typeof raw['asignadoA'] === 'string' ? raw['asignadoA'] : '',
       prioridad,
-      createdAt: typeof raw?.createdAt === 'number' ? raw.createdAt : now,
-      fechaLimite: typeof raw?.fechaLimite === 'number' ? raw.fechaLimite : null,
+      createdAt: typeof raw['createdAt'] === 'number' ? raw['createdAt'] : now,
+      fechaLimite: raw['fechaLimite'] === null ? null : typeof raw['fechaLimite'] === 'number' ? raw['fechaLimite'] : null,
       comentarios,
       historial,
-      updatedAt: typeof raw?.updatedAt === 'number' ? raw.updatedAt : now,
+      updatedAt: typeof raw['updatedAt'] === 'number' ? raw['updatedAt'] : now,
     };
   }
 
-  private save(tickets: TicketEntity[]): void {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(tickets));
-    } catch {
-      // ignore
+  private normalizeHistoryEntry(o: Record<string, unknown>, now: number): TicketHistoryEntry {
+    const ca = o['changedAt'] ?? o['changed_at'];
+    let changedAt = now;
+    if (typeof ca === 'number' && Number.isFinite(ca)) changedAt = ca;
+    else if (typeof ca === 'string') {
+      const t = new Date(ca).getTime();
+      if (Number.isFinite(t)) changedAt = t;
     }
+    const field =
+      typeof o['field'] === 'string'
+        ? o['field']
+        : typeof o['campo'] === 'string'
+          ? o['campo']
+          : 'ticket';
+    const from =
+      typeof o['from'] === 'string'
+        ? o['from']
+        : typeof o['from_value'] === 'string'
+          ? o['from_value']
+          : '';
+    const to =
+      typeof o['to'] === 'string'
+        ? o['to']
+        : typeof o['to_value'] === 'string'
+          ? o['to_value']
+          : '';
+    const by =
+      typeof o['by'] === 'string'
+        ? o['by']
+        : typeof o['by_text'] === 'string'
+          ? o['by_text']
+          : typeof o['changed_by'] === 'string'
+            ? o['changed_by']
+            : typeof o['by_user_id'] === 'string'
+              ? o['by_user_id']
+              : 'anon';
+    return {
+      id: typeof o['id'] === 'string' ? o['id'] : this.makeId(),
+      field,
+      from,
+      to,
+      by,
+      changedAt,
+    };
   }
 
-  private syncGroupTicketCount(groupId: string): void {
-    if (!groupId) return;
-    const count = this.tickets().filter((t) => t.groupId === groupId).length;
-    this.groupStore.update(groupId, { tickets: count });
-  }
-
-  private isStatus(value: any): value is TicketStatus {
+  private isStatus(value: unknown): value is TicketStatus {
     return value === 'Pendiente' || value === 'En progreso' || value === 'Revisión' || value === 'Finalizada';
   }
 
-  private isPriority(value: any): value is TicketPriority {
+  private isPriority(value: unknown): value is TicketPriority {
     return value === 'Baja' || value === 'Media' || value === 'Alta';
   }
 
@@ -318,5 +344,15 @@ export class TicketStore {
     if (c?.randomUUID) return c.randomUUID();
     return `t_${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
-}
 
+  private toError(err: unknown): Error {
+    const wrapped = (err as { error?: unknown })?.error;
+    const body =
+      wrapped && typeof wrapped === 'object' && wrapped !== null && 'data' in wrapped
+        ? (wrapped as ApiEnvelope<{ message?: string }>)
+        : null;
+    const msg = body?.data?.[0]?.message;
+    if (typeof msg === 'string' && msg.trim()) return new Error(msg);
+    return new Error('Error al comunicarse con el servidor de tickets');
+  }
+}

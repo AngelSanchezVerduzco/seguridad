@@ -7,6 +7,10 @@ export type ProfileEntity = {
   direccion: string;
   fechaNacimiento: string;
   telefono: string;
+  /** Si true, tiene todos los permisos. Si false, solo ver grupos/tickets y unirse a grupos. */
+  isAdmin: boolean;
+  /** Permisos efectivos tras login API (user_permissions). Si falta, el cliente puede usar fallback demo. */
+  permissions?: string[];
   updatedAt: number;
 };
 
@@ -32,6 +36,8 @@ export class ProfileStore {
       direccion: '',
       fechaNacimiento: '',
       telefono: '',
+      isAdmin: false,
+      permissions: undefined,
     };
     this.set({ ...base, ...patch });
   }
@@ -49,8 +55,23 @@ export class ProfileStore {
     try {
       const raw = localStorage.getItem(this.storageKey);
       if (!raw) return null;
-      const parsed = JSON.parse(raw) as unknown;
-      if (parsed && typeof parsed === 'object') return parsed as ProfileEntity;
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      if (!parsed || typeof parsed !== 'object') return null;
+      const rawPerms = parsed['permissions'];
+      const permissionsFromStorage = Array.isArray(rawPerms)
+        ? (rawPerms as unknown[]).filter((x): x is string => typeof x === 'string')
+        : undefined;
+      return {
+        usuario: typeof parsed['usuario'] === 'string' ? (parsed['usuario'] as string) : '',
+        email: typeof parsed['email'] === 'string' ? (parsed['email'] as string) : '',
+        nombreCompleto: typeof parsed['nombreCompleto'] === 'string' ? (parsed['nombreCompleto'] as string) : '',
+        direccion: typeof parsed['direccion'] === 'string' ? (parsed['direccion'] as string) : '',
+        fechaNacimiento: typeof parsed['fechaNacimiento'] === 'string' ? (parsed['fechaNacimiento'] as string) : '',
+        telefono: typeof parsed['telefono'] === 'string' ? (parsed['telefono'] as string) : '',
+        isAdmin: parsed['isAdmin'] === true,
+        ...(permissionsFromStorage !== undefined ? { permissions: permissionsFromStorage } : {}),
+        updatedAt: typeof parsed['updatedAt'] === 'number' ? (parsed['updatedAt'] as number) : Date.now(),
+      };
     } catch {
       // ignore
     }

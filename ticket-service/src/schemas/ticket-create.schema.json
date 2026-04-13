@@ -1,0 +1,17 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["groupId", "titulo", "descripcion"],
+  "properties": {
+    "groupId": { "type": "string", "minLength": 1 },
+    "titulo": { "type": "string", "minLength": 1 },
+    "descripcion": { "type": "string" },
+    "estado": {
+      "type": "string",
+      "enum": ["Pendiente", "En progreso", "Revisión", "Finalizada"]
+    },
+    "asignadoA": { "type": "string" },
+    "prioridad": { "type": "string", "enum": ["Baja", "Media", "Alta"] },
+    "fechaLimite": { "type": ["integer", "null"] }
+  }
+}

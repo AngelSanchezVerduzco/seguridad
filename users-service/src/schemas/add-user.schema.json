@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["email", "password", "nombre", "permissions"],
+  "properties": {
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "password": {
+      "type": "string",
+      "minLength": 8
+    },
+    "nombre": {
+      "type": "string",
+      "minLength": 1
+    },
+    "permissions": {
+      "$ref": "permissions.schema.json"
+    }
+  },
+  "additionalProperties": false
+}

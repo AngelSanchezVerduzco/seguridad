@@ -74,6 +74,29 @@
     margin-bottom: 0.35rem;
   }
 
+  /* Texto del comentario: color explícito (evita heredar color claro del tema PrimeNG). */
+  .comment-body {
+    color: #0f172a;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    font-size: 0.95rem;
+  }
+
+  .historial-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    color: #0f172a;
+  }
+
+  .historial-table thead th {
+    color: #475569;
+  }
+
+  .historial-table tbody td {
+    color: #0f172a;
+  }
+
   @media (max-width: 900px) {
     .grid {
       grid-template-columns: 1fr;
@@ -85,7 +108,7 @@
   <section class="card">
     <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap">
       <div style="color: #0f172a; font-weight: 650">Ticket no encontrado.</div>
-      <a routerLink="/tickets">Volver a tickets</a>
+      <button pButton type="button" label="Volver" icon="pi pi-arrow-left" severity="secondary" (click)="volver()"></button>
     </div>
   </section>
 } @else {
@@ -96,9 +119,7 @@
     </div>
 
     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
-      <a routerLink="/tickets">
-        <button pButton type="button" label="Volver" icon="pi pi-arrow-left" severity="secondary"></button>
-      </a>
+      <button pButton type="button" label="Volver" icon="pi pi-arrow-left" severity="secondary" (click)="volver()"></button>
       <div *ifHasPermission="['ticket_edit', 'tickets_edit']">
         <button pButton type="button" label="Editar" icon="pi pi-pencil" (click)="editar()"></button>
       </div>
@@ -148,16 +169,19 @@
     <h3 style="margin: 0 0 0.25rem; color: #0f172a">Comentarios</h3>
     <p style="margin: 0; color: #64748b; font-size: 0.9rem">Se guardan en el ticket y quedan en el historial.</p>
 
-    <div class="comment-row">
+    <div class="comment-row" *ifHasPermission="['ticket_edit', 'tickets_edit']">
       <input pInputText class="w-full" [formControl]="commentControl" placeholder="Escribe un comentario..." />
       <button pButton type="button" label="Agregar" icon="pi pi-send" (click)="agregarComentario()"></button>
     </div>
+    @if (commentError(); as err) {
+      <p style="margin: 0.5rem 0 0; color: #b91c1c; font-size: 0.9rem">{{ err }}</p>
+    }
 
     <div style="margin-top: 0.75rem; display: grid; gap: 0.5rem">
       @for (c of ticket()!.comentarios; track c.id) {
         <div class="comment">
           <div class="comment-meta">{{ c.author }} · {{ formatDate(c.createdAt) }}</div>
-          <div style="white-space: pre-wrap">{{ c.text }}</div>
+          <div class="comment-body">{{ c.text }}</div>
         </div>
       } @empty {
         <div style="color: #64748b; margin-top: 0.75rem">Sin comentarios aún.</div>
@@ -167,31 +191,60 @@
 
   <section class="card" style="margin-top: 1rem">
     <h3 style="margin: 0 0 0.75rem; color: #0f172a">Historial de cambios</h3>
-    <p-table [value]="ticket()!.historial" [paginator]="true" [rows]="8" [rowsPerPageOptions]="[8, 15, 25]">
-      <ng-template pTemplate="header">
-        <tr>
-          <th>Fecha</th>
-          <th>Campo</th>
-          <th>De</th>
-          <th>A</th>
-          <th>Por</th>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="body" let-h>
-        <tr>
-          <td>{{ formatDate(h.changedAt) }}</td>
-          <td>{{ h.field }}</td>
-          <td style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ h.from }}</td>
-          <td style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ h.to }}</td>
-          <td>{{ h.by }}</td>
-        </tr>
-      </ng-template>
-      <ng-template pTemplate="emptymessage">
-        <tr>
-          <td colspan="5" style="color: #64748b">Sin historial aún.</td>
-        </tr>
-      </ng-template>
-    </p-table>
+    <div
+      style="overflow: auto; max-height: 420px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff"
+    >
+      <table class="historial-table">
+        <thead>
+          <tr style="background: #f8fafc; text-align: left">
+            <th style="padding: 0.65rem 0.75rem; font-weight: 600">Fecha</th>
+            <th style="padding: 0.65rem 0.75rem; font-weight: 600">Campo</th>
+            <th style="padding: 0.65rem 0.75rem; font-weight: 600">De</th>
+            <th style="padding: 0.65rem 0.75rem; font-weight: 600">A</th>
+            <th style="padding: 0.65rem 0.75rem; font-weight: 600">Por</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (h of ticket()!.historial; track h.id) {
+            <tr style="border-top: 1px solid #e2e8f0">
+              <td style="padding: 0.65rem 0.75rem; vertical-align: top">{{ formatDate(h.changedAt) }}</td>
+              <td style="padding: 0.65rem 0.75rem; vertical-align: top">{{ h.field }}</td>
+              <td
+                style="
+                  max-width: 220px;
+                  padding: 0.65rem 0.75rem;
+                  vertical-align: top;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
+                [title]="h.from"
+              >
+                {{ h.from }}
+              </td>
+              <td
+                style="
+                  max-width: 220px;
+                  padding: 0.65rem 0.75rem;
+                  vertical-align: top;
+                  white-space: nowrap;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
+                [title]="h.to"
+              >
+                {{ h.to }}
+              </td>
+              <td style="padding: 0.65rem 0.75rem; vertical-align: top">{{ h.by }}</td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" style="padding: 1rem 0.75rem; color: #64748b">Sin historial aún.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </section>
 
   <p-dialog
@@ -202,6 +255,9 @@
     [style]="{ width: 'min(820px, 95vw)' }"
   >
     <form [formGroup]="form" (ngSubmit)="guardar()">
+      @if (detailSaveError) {
+        <p style="margin: 0 0 0.75rem; color: #b91c1c; font-size: 0.9rem">{{ detailSaveError }}</p>
+      }
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem">
         <div class="field">
           <label>Grupo</label>
@@ -211,6 +267,7 @@
             formControlName="groupId"
             optionLabel="label"
             optionValue="value"
+            (onChange)="onDetailDialogGroupChange()"
           ></p-select>
         </div>
 
@@ -235,7 +292,16 @@
 
         <div class="field">
           <label>Asignado a</label>
-          <input pInputText class="w-full" formControlName="asignadoA" />
+          <p-select
+            class="w-full"
+            [options]="detailAssigneeOptions()"
+            formControlName="asignadoA"
+            optionLabel="label"
+            optionValue="value"
+            placeholder="Miembros del grupo elegido"
+            [filter]="true"
+            filterPlaceholder="Buscar…"
+          ></p-select>
         </div>
 
         <div class="field">

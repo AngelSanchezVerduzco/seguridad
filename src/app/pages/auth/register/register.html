@@ -240,9 +240,9 @@
 
       <p-button
         type="submit"
-        label="Enviar registro"
+        [label]="submitting ? 'Enviando...' : 'Enviar registro'"
         styleClass="w-full"
-        [disabled]="form.invalid"
+        [disabled]="form.invalid || submitting"
       />
 
       <div class="register-footer">

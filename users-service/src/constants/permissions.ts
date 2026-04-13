@@ -1,0 +1,25 @@
+export const VALID_PERMISSION_CODES = [
+  'groups_view',
+  'group_view',
+  'groups_edit',
+  'groups_delete',
+  'group_delete',
+  'groups_add',
+  'group_add',
+  'users_view',
+  'user_view',
+  'users_edit',
+  'user_edit',
+  'user_delete',
+  'user_add',
+  'tickets_view',
+  'ticket_view',
+  'tickets_edit',
+  'ticket_edit',
+  'ticket_delete',
+  'ticket_add',
+  'tickets_add',
+  'group_join',
+] as const;
+
+export type PermissionCode = (typeof VALID_PERMISSION_CODES)[number];

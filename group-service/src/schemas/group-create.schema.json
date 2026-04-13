@@ -1,0 +1,16 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nivel", "autor", "nombre", "descripcion"],
+  "properties": {
+    "nivel": { "type": "string", "minLength": 1 },
+    "autor": { "type": "string", "minLength": 1 },
+    "nombre": { "type": "string", "minLength": 1 },
+    "descripcion": { "type": "string", "minLength": 1 },
+    "miembros": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 },
+      "uniqueItems": true
+    }
+  }
+}

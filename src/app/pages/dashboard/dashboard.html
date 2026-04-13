@@ -206,11 +206,22 @@
   <div>
     <h1 class="title">Dashboard</h1>
     <p class="subtitle">
-      Resumen de tickets y vista por grupo. Al seleccionar un grupo, se actualiza la vista automáticamente.
+      @if (isAdmin()) {
+        Resumen de tickets y vista por grupo. Al seleccionar un grupo, se actualiza la vista automáticamente.
+      } @else {
+        Tu grupo y los tickets asignados. Un administrador te invita al grupo.
+      }
     </p>
   </div>
 
-  <div class="view-toggle">
+  <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap">
+    @if (isAdmin()) {
+      <a routerLink="/users">
+        <button pButton type="button" label="Gestión de usuarios" icon="pi pi-shield" severity="secondary"></button>
+      </a>
+    }
+
+    <div class="view-toggle">
     <button
       type="button"
       [class.active]="viewMode() === 'Lista'"
@@ -225,10 +236,31 @@
     >
       <i class="pi pi-th-large" style="margin-right: 0.4rem"></i>Kanban
     </button>
+    </div>
   </div>
 </header>
 
 <section class="card">
+  @if (!isAdmin() && canViewGroups() && (userGroupIds()?.length ?? 0) === 0) {
+    <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; color: #92400e">
+      Un administrador debe invitarte a un grupo para ver sus tickets aquí.
+    </div>
+  }
+
+  @if (!isAdmin() && (userGroupIds()?.length ?? 0) > 0) {
+    <div style="background: #ecfdf5; border: 1px solid #10b981; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; color: #065f46">
+      <strong>Tu grupo:</strong>
+      {{ userGroupNames() }}
+    </div>
+  }
+
+  @if (!canViewTickets() && !isAdmin()) {
+    <div style="background: #fee2e2; border: 1px solid #ef4444; border-radius: 12px; padding: 1rem; margin-bottom: 1rem; color: #991b1b">
+      No tienes permiso para ver tickets. Contacta a un administrador.
+    </div>
+  }
+
+  @if (canViewGroups()) {
   <div class="field">
     <label>Grupo</label>
     <p-select
@@ -242,7 +274,9 @@
       placeholder="Todos los grupos"
     ></p-select>
   </div>
+  }
 
+  @if (canViewTickets()) {
   <div class="stats">
     <div class="stat">
       <p class="stat-label">Total</p>
@@ -310,9 +344,13 @@
 
     <div class="field" style="display: flex; align-items: end; justify-content: flex-end">
       <div *ifHasPermission="['ticket_add', 'tickets_add']">
-        <a routerLink="/tickets">
-          <button pButton type="button" label="Ir a Tickets" icon="pi pi-external-link"></button>
-        </a>
+        <button
+          pButton
+          type="button"
+          label="Crear ticket"
+          icon="pi pi-plus"
+          (click)="abrirCrearTicket()"
+        ></button>
       </div>
     </div>
   </div>
@@ -355,7 +393,13 @@
           </div>
 
           @for (t of kanbanColumn(s); track t.id) {
-            <div class="ticket-card" cdkDrag [cdkDragData]="t" (click)="irTicket(t)">
+            <div
+              class="ticket-card"
+              cdkDrag
+              [cdkDragDisabled]="!canEditTickets()"
+              [cdkDragData]="t"
+              (click)="irTicket(t)"
+            >
               <p class="ticket-title">{{ t.titulo }}</p>
               <div class="ticket-meta">
                 <p-tag [value]="t.prioridad" [severity]="prioritySeverity(t.prioridad)"></p-tag>
@@ -372,5 +416,93 @@
       }
     </div>
   }
+  }
 </section>
 
+<p-dialog
+  header="Nuevo ticket"
+  [(visible)]="createDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: 'min(820px, 95vw)' }"
+>
+  <form [formGroup]="createForm" (ngSubmit)="guardarCrearTicket()">
+    @if (createError) {
+      <p style="margin: 0 0 0.75rem; color: #b91c1c; font-size: 0.9rem">{{ createError }}</p>
+    }
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem">
+      <div class="field">
+        <label>Grupo</label>
+        <p-select
+          class="w-full"
+          [options]="groupOptions()"
+          formControlName="groupId"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Selecciona un grupo"
+          (onChange)="onCreateDialogGroupChange()"
+        ></p-select>
+      </div>
+
+      <div class="field">
+        <label>Status</label>
+        <p-select class="w-full" [options]="statusOptions" formControlName="estado"></p-select>
+      </div>
+
+      <div class="field" style="grid-column: span 2">
+        <label>Título</label>
+        <input pInputText class="w-full" formControlName="titulo" placeholder="Título del ticket" />
+      </div>
+
+      <div class="field" style="grid-column: span 2">
+        <label>Descripción</label>
+        <textarea pTextarea class="w-full" rows="3" formControlName="descripcion" placeholder="Describe el problema"></textarea>
+      </div>
+
+      <div class="field">
+        <label>Asignado a</label>
+        <p-select
+          class="w-full"
+          [options]="createAssigneeOptions()"
+          formControlName="asignadoA"
+          optionLabel="label"
+          optionValue="value"
+          placeholder="Miembros del grupo elegido"
+          [filter]="true"
+          filterPlaceholder="Buscar…"
+        ></p-select>
+      </div>
+
+      <div class="field">
+        <label>Prioridad</label>
+        <p-select class="w-full" [options]="priorityOptions" formControlName="prioridad"></p-select>
+      </div>
+
+      <div class="field">
+        <label>Fecha de creación</label>
+        <input pInputText class="w-full" [disabled]="true" [value]="formatDate(now)" />
+      </div>
+
+      <div class="field">
+        <label>Fecha límite</label>
+        <p-datepicker
+          class="w-full"
+          formControlName="fechaLimite"
+          [showIcon]="true"
+          dateFormat="dd/mm/yy"
+        ></p-datepicker>
+      </div>
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem">
+      <button
+        pButton
+        type="button"
+        label="Cancelar"
+        severity="secondary"
+        (click)="createDialogVisible = false"
+      ></button>
+      <button pButton type="submit" label="Guardar"></button>
+    </div>
+  </form>
+</p-dialog>

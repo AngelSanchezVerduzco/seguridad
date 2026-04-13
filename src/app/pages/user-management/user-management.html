@@ -1,0 +1,251 @@
+<style>
+  .um-header {
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .um-title {
+    font-size: 1.6rem;
+    font-weight: 650;
+    color: #0f172a;
+    margin: 0;
+  }
+
+  .um-subtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .um-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.25rem;
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.12);
+  }
+
+  .perm-panel {
+    margin-top: 1.25rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1.25rem;
+  }
+
+  .perm-panel-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+
+  .perm-panel-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .perm-group {
+    margin-bottom: 1rem;
+  }
+
+  .perm-group-title {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.95rem;
+    margin: 0 0 0.5rem;
+    padding-bottom: 0.35rem;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .perm-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .perm-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0;
+    font-size: 0.9rem;
+    color: #334155;
+  }
+
+  .perm-key {
+    font-family: monospace;
+    font-size: 0.8rem;
+    color: #94a3b8;
+  }
+
+  .perm-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+    margin-top: 1rem;
+  }
+</style>
+
+<header class="um-header">
+  <div>
+    <h1 class="um-title">Gestión de usuarios</h1>
+    <p class="um-subtitle">Crea usuarios, asigna y modifica sus permisos individuales.</p>
+  </div>
+
+  <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+    <button pButton type="button" label="Nuevo usuario" icon="pi pi-user-plus" (click)="abrirCrear()"></button>
+    <a routerLink="/dashboard">
+      <button pButton type="button" label="Volver" icon="pi pi-arrow-left" severity="secondary"></button>
+    </a>
+  </div>
+</header>
+
+@if (adminUsers.listError()) {
+  <p style="margin: 0 0 1rem; padding: 0.75rem 1rem; background: #fef2f2; color: #b91c1c; border-radius: 10px">
+    {{ adminUsers.listError() }}
+  </p>
+}
+
+<section class="um-card">
+  <p-table [value]="adminUsers.users()" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]">
+    <ng-template pTemplate="header">
+      <tr>
+        <th>Email</th>
+        <th>Nombre</th>
+        <th>Permisos</th>
+        <th>Registrado</th>
+        <th style="width: 200px"></th>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="body" let-u>
+      <tr>
+        <td>{{ u.email }}</td>
+        <td>{{ u.nombre }}</td>
+        <td style="display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center">
+          @if (u.isAdmin) {
+            <p-tag value="Administrador" severity="warn"></p-tag>
+          }
+          <p-tag [value]="u.permissions.length + ' permisos'" severity="info"></p-tag>
+        </td>
+        <td>
+          @if (u.createdAt) {
+            {{ u.createdAt | date: 'dd/MM/yyyy HH:mm' }}
+          } @else {
+            <span style="color: #94a3b8">—</span>
+          }
+        </td>
+        <td>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap">
+            <button pButton type="button" label="Permisos" icon="pi pi-shield" severity="secondary" (click)="abrirPermisos(u)"></button>
+            <button
+              pButton
+              type="button"
+              icon="pi pi-trash"
+              severity="danger"
+              [disabled]="esUsuarioActual(u)"
+              [title]="esUsuarioActual(u) ? 'No puedes eliminar tu propia cuenta' : 'Eliminar usuario'"
+              (click)="eliminarUsuario(u)"
+            ></button>
+          </div>
+        </td>
+      </tr>
+    </ng-template>
+    <ng-template pTemplate="emptymessage">
+      <tr>
+        <td colspan="5" style="color: #64748b">No hay usuarios aún. Crea uno con "Nuevo usuario".</td>
+      </tr>
+    </ng-template>
+  </p-table>
+</section>
+
+<p-dialog
+  header="Nuevo usuario"
+  [(visible)]="createDialogVisible"
+  [modal]="true"
+  [draggable]="false"
+  [style]="{ width: 'min(480px, 95vw)' }"
+>
+  <form [formGroup]="createForm" (ngSubmit)="crearUsuario()">
+    <div style="display: grid; gap: 1rem">
+      <div class="field" style="margin-bottom: 0">
+        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem">Email</label>
+        <input pInputText style="width: 100%" formControlName="email" placeholder="usuario@correo.com" />
+      </div>
+      <div class="field" style="margin-bottom: 0">
+        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem">Nombre</label>
+        <input pInputText style="width: 100%" formControlName="nombre" placeholder="Nombre del usuario" />
+      </div>
+      <div class="field" style="margin-bottom: 0">
+        <label style="display: block; font-size: 0.85rem; font-weight: 600; color: #475569; margin-bottom: 0.35rem">Contraseña</label>
+        <input pInputText style="width: 100%" type="password" formControlName="password" placeholder="Mín. 4 caracteres" />
+      </div>
+    </div>
+
+    @if (createError) {
+      <div style="margin-top: 0.75rem; color: #dc2626; font-size: 0.9rem">{{ createError }}</div>
+    }
+
+    <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1rem">
+      <button pButton type="button" label="Cancelar" severity="secondary" (click)="createDialogVisible = false"></button>
+      <button pButton type="submit" label="Crear usuario" icon="pi pi-check"></button>
+    </div>
+  </form>
+</p-dialog>
+
+@if (selectedUser(); as su) {
+  <section class="perm-panel">
+    <div class="perm-panel-header">
+      <div>
+        <p class="perm-panel-title">Permisos de {{ su.email }}</p>
+        <p style="margin: 0.15rem 0 0; font-size: 0.85rem; color: #64748b">
+          Activa o desactiva los permisos. Guarda para aplicar los cambios.
+        </p>
+      </div>
+      <p-tag [value]="editPermissions().size + ' activos'" severity="success"></p-tag>
+    </div>
+
+    @if (permPanelError) {
+      <p style="margin: 0 0 1rem; color: #b91c1c; font-size: 0.9rem">{{ permPanelError }}</p>
+    }
+
+    @if (su.isAdmin) {
+      <p style="margin: 0 0 1rem; padding: 0.65rem 0.85rem; background: #fffbeb; color: #92400e; border-radius: 8px; font-size: 0.9rem">
+        Este usuario es <strong>administrador</strong> en la base de datos (acceso amplio). Los permisos de catálogo son adicionales para la app.
+      </p>
+    }
+
+    @for (group of permissionGroups; track group.label) {
+      <div class="perm-group">
+        <p class="perm-group-title">{{ group.label }}</p>
+        <div class="perm-grid">
+          @for (p of group.permissions; track p.key) {
+            <div class="perm-item">
+              <p-checkbox
+                [binary]="true"
+                [ngModel]="hasPermission(p.key)"
+                (ngModelChange)="togglePermission(p.key)"
+              ></p-checkbox>
+              <div>
+                <div>{{ p.label }}</div>
+                <div class="perm-key">{{ p.key }}</div>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <div class="perm-actions">
+      <button pButton type="button" label="Cancelar" severity="secondary" (click)="cerrarPermisos()"></button>
+      <button pButton type="button" label="Guardar permisos" icon="pi pi-check" (click)="guardarPermisos()"></button>
+    </div>
+  </section>
+}

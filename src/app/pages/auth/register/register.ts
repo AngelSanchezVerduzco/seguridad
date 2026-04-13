@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Component, inject } from '@angular/core';
 import {
   FormBuilder,
   FormGroup,
@@ -17,7 +18,9 @@ import { DatePickerModule } from 'primeng/datepicker';
 import { PasswordModule } from 'primeng/password';
 import { InputNumberModule } from 'primeng/inputnumber';
 import { RouterLink } from '@angular/router';
-import { ProfileStore } from '../../../services/profile-store';
+import { Router } from '@angular/router';
+import { API_BASE_URL } from '../../../services/api-config';
+import { AuthSession } from '../../../services/auth-session';
 
 /** Símbolos especiales permitidos para la contraseña */
 const SIMBOLOS_ESPECIALES = '!@#$%^&*()_+-=[]{}|;\':",./<>?';
@@ -96,7 +99,12 @@ function maxDiezDigitos(): ValidatorFn {
   styleUrl: './register.css',
 })
 export class Register {
+  private readonly http = inject(HttpClient);
+  private readonly router = inject(Router);
+  private readonly authSession = inject(AuthSession);
+
   form: FormGroup;
+  submitting = false;
   /** Fecha máxima = hoy menos 18 años (solo mayores de edad) */
   maxDate: Date;
   /** Símbolos mostrados en la ayuda de contraseña */
@@ -104,8 +112,7 @@ export class Register {
 
   constructor(
     private fb: FormBuilder,
-    private messageService: MessageService,
-    private profileStore: ProfileStore
+    private messageService: MessageService
   ) {
     const hoy = new Date();
     this.maxDate = new Date(hoy.getFullYear() - 18, hoy.getMonth(), hoy.getDate());
@@ -146,6 +153,7 @@ export class Register {
   }
 
   onSubmit(): void {
+    if (this.submitting) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) {
       this.messageService.add({
@@ -159,6 +167,8 @@ export class Register {
     const v = this.form.getRawValue() as {
       usuario: string;
       email: string;
+      password: string;
+      confirmPassword: string;
       nombreCompleto: string;
       direccion: string;
       fechaNacimiento: Date | null;
@@ -172,19 +182,70 @@ export class Register {
           ).padStart(2, '0')}/${v.fechaNacimiento.getFullYear()}`
         : '';
 
-    this.profileStore.set({
-      usuario: v.usuario ?? '',
-      email: v.email ?? '',
-      nombreCompleto: v.nombreCompleto ?? '',
-      direccion: v.direccion ?? '',
+    const payload = {
+      usuario: String(v.usuario ?? '').trim(),
+      email: String(v.email ?? '').trim().toLowerCase(),
+      password: String(v.password ?? ''),
+      confirmPassword: String(v.confirmPassword ?? ''),
+      nombreCompleto: String(v.nombreCompleto ?? '').trim(),
+      direccion: String(v.direccion ?? '').trim(),
       fechaNacimiento: fecha,
       telefono: v.telefono !== null && v.telefono !== undefined ? String(v.telefono) : '',
-    });
+    };
 
-    this.messageService.add({
-      severity: 'success',
-      summary: 'Registro enviado',
-      detail: 'Datos recibidos correctamente (sin backend por ahora).',
-    });
+    this.submitting = true;
+    this.http
+      .post<{ statusCode: number; intOpCode: number; data: Array<{ message?: string }> }>(
+        `${API_BASE_URL}/api/users/register`,
+        payload
+      )
+      .subscribe({
+        next: (res) => {
+          this.submitting = false;
+          this.authSession.clear();
+          this.messageService.add({
+            severity: 'success',
+            summary: 'Registro exitoso',
+            detail: res.data?.[0]?.message ?? 'Cuenta creada correctamente. Inicia sesión.',
+          });
+          this.form.reset();
+          setTimeout(() => this.router.navigate(['/auth/login']), 700);
+        },
+        error: (err: unknown) => {
+          this.submitting = false;
+          const msg = this.readRegisterErrorMessage(err);
+          // Para depurar: F12 → Consola; verás el cuerpo que devolvió el servidor.
+          console.error('[register] error del servidor:', err);
+          console.error('[register] mensaje mostrado al usuario:', msg);
+          this.messageService.add({
+            severity: 'error',
+            summary: 'Error en registro',
+            detail: msg,
+          });
+        },
+      });
+  }
+
+  private readRegisterErrorMessage(err: unknown): string {
+    const body = (err as { error?: unknown })?.error;
+    if (body && typeof body === 'object' && body !== null && 'data' in body) {
+      const row = (body as { data?: Array<{ message?: string }> }).data?.[0];
+      if (typeof row?.message === 'string' && row.message.trim()) {
+        return this.translateRegisterError(row.message);
+      }
+    }
+    if (typeof body === 'string' && body.trim()) return this.translateRegisterError(body);
+    return 'No se pudo completar el registro. Revisa correo, contraseña (10+ caracteres y un símbolo) o si el correo ya está registrado.';
+  }
+
+  private translateRegisterError(raw: string): string {
+    const m = raw.toLowerCase();
+    if (m.includes('rate limit')) {
+      return 'Supabase aplicó un límite temporal (muchos intentos de registro). Espera unos minutos o prueba otro correo; si el usuario ya se creó antes, entra con Login.';
+    }
+    if (m.includes('already') && m.includes('registered')) {
+      return 'Ese correo ya está registrado. Usa Iniciar sesión en lugar de registrarte de nuevo.';
+    }
+    return raw;
   }
 }

@@ -78,6 +78,8 @@
           <th>Integrantes</th>
           <th>Tickets</th>
           <th>Descripción</th>
+          <th>Miembros</th>
+          <th>Acciones</th>
         </tr>
       </ng-template>
 
@@ -91,12 +93,27 @@
           <td style="max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
             {{ g.descripcion }}
           </td>
+          <td>{{ g.miembros.join(', ') }}</td>
+          <td>
+            <ng-container *ngIf="isAdmin()">
+              <!-- Admin ve los miembros -->
+            </ng-container>
+            <ng-container *ngIf="!isAdmin() && canJoin()">
+              <p-button
+                *ngIf="!isJoined(g)"
+                label="Unirse"
+                (onClick)="joinGroup(g)"
+                styleClass="p-button-sm"
+              ></p-button>
+              <span *ngIf="isJoined(g)">En el grupo</span>
+            </ng-container>
+          </td>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="emptymessage">
         <tr>
-          <td colspan="6" style="color: #64748b">Aún no hay grupos creados en `/group/crud`.</td>
+          <td colspan="8" style="color: #64748b">Aún no hay grupos creados en `/group/crud`.</td>
         </tr>
       </ng-template>
     </p-table>

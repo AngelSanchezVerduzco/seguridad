@@ -113,11 +113,19 @@
 <header class="crud-header">
   <div>
     <h1 class="crud-title">Grupos</h1>
-    <p class="crud-subtitle">Gestión de grupos con creación, edición y eliminación.</p>
+    <p class="crud-subtitle">Gestión de grupos.</p>
   </div>
 
-  <button pButton type="button" label="Nuevo group" icon="pi pi-plus" (click)="nuevo()"></button>
+  @if (canCreate()) {
+    <button pButton type="button" label="Nuevo grupo" icon="pi pi-plus" (click)="nuevo()"></button>
+  }
 </header>
+
+@if (saveError) {
+  <p style="margin: 0 0 1rem; padding: 0.75rem 1rem; background: #fef2f2; color: #b91c1c; border-radius: 10px">
+    {{ saveError }}
+  </p>
+}
 
 <section class="crud-card">
   <p-table [value]="groupStore.groups()" [paginator]="true" [rows]="8" [rowsPerPageOptions]="[8, 15, 25]">
@@ -127,6 +135,9 @@
         <th>Autor</th>
         <th>Nombre</th>
         <th>Integrantes</th>
+        @if (isAdmin()) {
+          <th>Miembros</th>
+        }
         <th>Tickets</th>
         <th>Descripción</th>
         <th style="width: 150px"></th>
@@ -138,54 +149,90 @@
         <td>{{ g.autor }}</td>
         <td>{{ g.nombre }}</td>
         <td>{{ g.integrantes }}</td>
+        @if (isAdmin()) {
+          <td>{{ g.miembros?.length ?? 0 }}</td>
+        }
         <td>{{ g.tickets }}</td>
-        <td style="max-width: 420px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
+        <td style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">
           {{ g.descripcion }}
         </td>
         <td>
           <div style="display: flex; gap: 0.5rem">
-            <button
-              pButton
-              type="button"
-              icon="pi pi-pencil"
-              severity="secondary"
-              (click)="editar(g)"
-            ></button>
-            <button pButton type="button" icon="pi pi-trash" severity="danger" (click)="eliminar(g)"></button>
+            @if (canEdit()) {
+              <button pButton type="button" icon="pi pi-pencil" severity="secondary" (click)="editar(g)"></button>
+            }
+            @if (canDelete()) {
+              <button pButton type="button" icon="pi pi-trash" severity="danger" (click)="eliminar(g)"></button>
+            }
           </div>
         </td>
       </tr>
     </ng-template>
     <ng-template pTemplate="emptymessage">
       <tr>
-        <td colspan="7" style="color: #64748b">No hay grupos aún.</td>
+        <td [attr.colspan]="isAdmin() ? 8 : 7" style="color: #64748b">No hay grupos aún.</td>
       </tr>
     </ng-template>
   </p-table>
 </section>
 
 <p-dialog
-  header="{{ editing ? 'Editar group' : 'Nuevo group' }}"
+  header="{{ editing ? 'Editar grupo' : 'Nuevo grupo' }}"
   [(visible)]="dialogVisible"
+  (onHide)="onDialogOculto()"
   [modal]="true"
   [draggable]="false"
   [style]="{ width: 'min(720px, 95vw)' }"
 >
   <form [formGroup]="form" (ngSubmit)="guardar()">
+    @if (saveError) {
+      <p style="margin: 0 0 1rem; color: #b91c1c; font-size: 0.9rem">{{ saveError }}</p>
+    }
+
     <div class="form-grid">
       <div class="field">
         <label>Nivel</label>
-        <input pInputText class="w-full" formControlName="nivel" placeholder="1" />
+        <input pInputText class="w-full" formControlName="nivel" placeholder="Ej: básico, 1, 2" />
+        @if (form.controls.nivel.invalid && form.controls.nivel.touched) {
+          <small style="display: block; margin-top: 0.25rem; color: #b91c1c">Este campo es obligatorio.</small>
+        }
       </div>
 
       <div class="field">
         <label>Autor</label>
-        <input pInputText class="w-full" formControlName="autor" placeholder="x" />
+        @if (editing) {
+          <input pInputText class="w-full" formControlName="autor" />
+          @if (form.controls.autor.invalid && form.controls.autor.touched) {
+            <small style="display: block; margin-top: 0.25rem; color: #b91c1c">Este campo es obligatorio.</small>
+          }
+        } @else {
+          <input type="hidden" formControlName="autor" />
+          <div
+            class="w-full"
+            style="
+              padding: 0.5rem 0.75rem;
+              border-radius: 6px;
+              background: #f1f5f9;
+              color: #0f172a;
+              font-size: 0.95rem;
+              border: 1px solid #e2e8f0;
+              box-sizing: border-box;
+            "
+          >
+            {{ currentAutorLabel() || 'Obteniendo usuario de la sesión…' }}
+          </div>
+          <p style="margin: 0.35rem 0 0; font-size: 0.8rem; color: #64748b">
+            No necesitas editar esto: es tu cuenta actual; el servidor también lo toma del token.
+          </p>
+        }
       </div>
 
       <div class="field span-2">
         <label>Nombre</label>
-        <input pInputText class="w-full" formControlName="nombre" placeholder="x" />
+        <input pInputText class="w-full" formControlName="nombre" placeholder="Nombre del grupo" />
+        @if (form.controls.nombre.invalid && form.controls.nombre.touched) {
+          <small style="display: block; margin-top: 0.25rem; color: #b91c1c">Este campo es obligatorio.</small>
+        }
       </div>
 
       <div class="field span-2">
@@ -195,8 +242,11 @@
           class="w-full"
           rows="3"
           formControlName="descripcion"
-          placeholder="x"
+          placeholder="Descripción breve"
         ></textarea>
+        @if (form.controls.descripcion.invalid && form.controls.descripcion.touched) {
+          <small style="display: block; margin-top: 0.25rem; color: #b91c1c">Este campo es obligatorio.</small>
+        }
       </div>
     </div>
 
@@ -256,7 +306,7 @@
         type="button"
         label="Cancelar"
         severity="secondary"
-        (click)="dialogVisible = false"
+        (click)="cerrarDialogo()"
       ></button>
       <button pButton type="submit" label="Guardar"></button>
     </div>

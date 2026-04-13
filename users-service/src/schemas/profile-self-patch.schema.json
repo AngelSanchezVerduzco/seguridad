@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["usuario", "email", "nombreCompleto", "direccion", "fechaNacimiento", "telefono"],
+  "properties": {
+    "usuario": {
+      "type": "string",
+      "minLength": 1
+    },
+    "email": {
+      "type": "string",
+      "format": "email"
+    },
+    "nombreCompleto": {
+      "type": "string",
+      "minLength": 1
+    },
+    "direccion": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fechaNacimiento": {
+      "type": "string",
+      "minLength": 1,
+      "anyOf": [
+        {
+          "pattern": "^([0-2][0-9]|3[0-1])\\/(0[1-9]|1[0-2])\\/[0-9]{4}$"
+        },
+        {
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+        }
+      ]
+    },
+    "telefono": {
+      "type": "string",
+      "pattern": "^[0-9]{1,10}$"
+    }
+  },
+  "additionalProperties": false
+}

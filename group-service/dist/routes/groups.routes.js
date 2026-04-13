@@ -1,0 +1,23 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const groups_controller_1 = require("../controllers/groups.controller");
+const auth_1 = require("../middlewares/auth");
+const validateSchema_1 = require("../middlewares/validateSchema");
+const group_create_schema_json_1 = __importDefault(require("../schemas/group-create.schema.json"));
+const group_patch_schema_json_1 = __importDefault(require("../schemas/group-patch.schema.json"));
+const member_add_schema_json_1 = __importDefault(require("../schemas/member-add.schema.json"));
+const member_remove_schema_json_1 = __importDefault(require("../schemas/member-remove.schema.json"));
+const router = (0, express_1.Router)();
+router.get('/health', (req, res) => groups_controller_1.groupsController.health(req, res));
+router.get('/', auth_1.requireAuth, (req, res) => groups_controller_1.groupsController.list(req, res));
+router.post('/', auth_1.requireAuth, (0, validateSchema_1.validateSchema)(group_create_schema_json_1.default), (req, res) => groups_controller_1.groupsController.create(req, res));
+router.get('/:id', auth_1.requireAuth, (req, res) => groups_controller_1.groupsController.getById(req, res));
+router.patch('/:id', auth_1.requireAuth, (0, validateSchema_1.validateSchema)(group_patch_schema_json_1.default), (req, res) => groups_controller_1.groupsController.patch(req, res));
+router.delete('/:id', auth_1.requireAuth, (req, res) => groups_controller_1.groupsController.remove(req, res));
+router.post('/:id/members', auth_1.requireAuth, (0, validateSchema_1.validateSchema)(member_add_schema_json_1.default), (req, res) => groups_controller_1.groupsController.addMember(req, res));
+router.delete('/:id/members', auth_1.requireAuth, (0, validateSchema_1.validateSchema)(member_remove_schema_json_1.default), (req, res) => groups_controller_1.groupsController.removeMember(req, res));
+exports.default = router;

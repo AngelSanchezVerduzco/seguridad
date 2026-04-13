@@ -102,8 +102,7 @@
   <div class="auth-card">
     <h1 class="auth-title">Iniciar sesión</h1>
     <p class="auth-subtitle">
-      Cualquier usuario se acepta, pero la contraseña debe tener mínimo 10 caracteres y al menos un
-      símbolo especial.
+      Admin: admin&#64;admin.com (cualquier contraseña). Usuarios: creados por el admin desde Gestión de usuarios.
     </p>
 
     <form [formGroup]="form" (ngSubmit)="onLogin()">
@@ -129,9 +128,11 @@
           pInputText
           formControlName="password"
           [invalid]="isInvalid('password')"
-          placeholder="Mín. 10 caracteres y un símbolo"
+          placeholder="Contraseña"
         />
-        <small class="hint">Símbolos permitidos: {{ simbolosEspeciales }}</small>
+        @if (loginError) {
+          <small style="color: #dc2626; display: block; margin-top: 0.35rem">{{ loginError }}</small>
+        }
       </div>
 
       <p-button
